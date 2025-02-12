@@ -10,27 +10,22 @@ export const parseMatrix = (input) => {
   }
 };
 
-export const isValidMatrix = (matrix) => {
-  if (!matrix || !matrix.length || !matrix[0].length) return false;
-  const width = matrix[0].length;
-  return matrix.every(row => row.length === width);
-};
-
+// Transpuesta de una matriz
 export const transpose = (matrix) => {
-  return matrix[0].map((_, colIndex) => 
-    matrix.map(row => row[colIndex])
-  );
+  return matrix[0].map((_, i) => matrix.map(row => row[i]));
 };
 
+// Conjugada transpuesta (para matrices reales es igual a la transpuesta)
 export const conjugateTranspose = (matrix) => {
-  // Para matrices reales es igual a la transpuesta
   return transpose(matrix);
 };
 
+// Verificar si es matriz nula
 export const isNullMatrix = (matrix) => {
   return matrix.every(row => row.every(val => val === 0));
 };
 
+// Verificar si es matriz identidad
 export const isIdentity = (matrix) => {
   if (matrix.length !== matrix[0].length) return false;
   return matrix.every((row, i) => 
@@ -38,6 +33,7 @@ export const isIdentity = (matrix) => {
   );
 };
 
+// Verificar si es matriz diagonal
 export const isDiagonal = (matrix) => {
   if (matrix.length !== matrix[0].length) return false;
   return matrix.every((row, i) => 
@@ -45,6 +41,7 @@ export const isDiagonal = (matrix) => {
   );
 };
 
+// Verificar si es matriz triangular superior
 export const isUpperTriangular = (matrix) => {
   if (matrix.length !== matrix[0].length) return false;
   return matrix.every((row, i) => 
@@ -52,6 +49,7 @@ export const isUpperTriangular = (matrix) => {
   );
 };
 
+// Verificar si es matriz triangular inferior
 export const isLowerTriangular = (matrix) => {
   if (matrix.length !== matrix[0].length) return false;
   return matrix.every((row, i) => 
@@ -59,6 +57,16 @@ export const isLowerTriangular = (matrix) => {
   );
 };
 
+// Verificar si es matriz simétrica
+export const isSymmetric = (matrix) => {
+  if (matrix.length !== matrix[0].length) return false;
+  const transposed = transpose(matrix);
+  return matrix.every((row, i) => 
+    row.every((val, j) => val === transposed[i][j])
+  );
+};
+
+// Verificar si es matriz hermitiana (para matrices reales es igual a simétrica)
 export const isHermitian = (matrix) => {
   if (matrix.length !== matrix[0].length) return false;
   const conjugateTransposed = conjugateTranspose(matrix);
@@ -66,8 +74,6 @@ export const isHermitian = (matrix) => {
     row.every((val, j) => val === conjugateTransposed[i][j])
   );
 };
-
-
 
 // Suma de matrices
 export const addMatrices = (matrix1, matrix2) => {
@@ -84,12 +90,11 @@ export const multiplyMatrices = (matrix1, matrix2) => {
   if (matrix1[0].length !== matrix2.length) {
     throw new Error('El número de columnas de la primera matriz debe ser igual al número de filas de la segunda');
   }
-  
-  return matrix1.map((row) => {
-    return matrix2[0].map((_, j) => {
-      return row.reduce((sum, val, k) => sum + val * matrix2[k][j], 0);
-    });
-  });
+  return matrix1.map(row => 
+    matrix2[0].map((_, j) => 
+      row.reduce((sum, val, k) => sum + val * matrix2[k][j], 0)
+    )
+  );
 };
 
 // Determinante (para matrices 2x2 y 3x3)
@@ -126,64 +131,7 @@ export const rank = (matrix) => {
   const det = determinant(matrix);
   if (det !== 0) return matrix.length;
   
-  // Si el determinante es 0, el rango es menor que la dimensión
   return matrix.length - 1;
-};
-
-// Determinante usando el método de Laplace
-export const determinant = (matrix) => {
-  if (matrix.length !== matrix[0].length) {
-    throw new Error('La matriz debe ser cuadrada');
-  }
-  
-  if (matrix.length === 1) return matrix[0][0];
-  
-  if (matrix.length === 2) {
-    return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
-  }
-  
-  let det = 0;
-  for (let i = 0; i < matrix[0].length; i++) {
-    det += matrix[0][i] * cofactor(matrix, 0, i);
-  }
-  return det;
-};
-
-// Cofactor para el cálculo del determinante
-export const cofactor = (matrix, row, col) => {
-  const minor = getMinor(matrix, row, col);
-  return Math.pow(-1, row + col) * determinant(minor);
-};
-
-// Obtener menor de una matriz
-export const getMinor = (matrix, row, col) => {
-  return matrix
-    .filter((_, index) => index !== row)
-    .map(row => row.filter((_, index) => index !== col));
-};
-
-// Suma de matrices
-export const addMatrices = (matrix1, matrix2) => {
-  if (matrix1.length !== matrix2.length || matrix1[0].length !== matrix2[0].length) {
-    throw new Error('Las matrices deben tener las mismas dimensiones');
-  }
-  
-  return matrix1.map((row, i) => 
-    row.map((val, j) => val + matrix2[i][j])
-  );
-};
-
-// Multiplicación de matrices
-export const multiplyMatrices = (matrix1, matrix2) => {
-  if (matrix1[0].length !== matrix2.length) {
-    throw new Error('El número de columnas de la primera matriz debe ser igual al número de filas de la segunda');
-  }
-  
-  return matrix1.map(row => {
-    return matrix2[0].map((_, j) => {
-      return row.reduce((sum, val, k) => sum + val * matrix2[k][j], 0);
-    });
-  });
 };
 
 // Método de Gauss-Jordan
@@ -242,7 +190,6 @@ export const gaussJordan = (matrix) => {
 
   return augmentedMatrix;
 };
-// ... código existente ...
 
 // Polinomio característico (para matrices 2x2 y 3x3)
 export const characteristicPolynomial = (matrix) => {
@@ -290,11 +237,7 @@ export const findEigenvalues = (matrix) => {
     ];
   }
 
-  if (matrix.length === 3) {
-    throw new Error('Para matrices 3x3, use métodos numéricos');
-  }
-
-  throw new Error('Solo se soportan matrices 2x2');
+  throw new Error('Solo se soportan matrices 2x2 para valores propios');
 };
 
 // Encontrar vectores propios para un valor propio dado

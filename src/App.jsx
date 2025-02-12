@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Container, Box, ThemeProvider, CssBaseline } from '@mui/material';
+import { Container, Box, ThemeProvider, CssBaseline, Typography } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
 import MatrixInput from './components/MatrixInput';
 import MatrixDisplay from './components/MatrixDisplay';
@@ -25,19 +25,10 @@ function App() {
         secondary: '#b3b3b3'
       },
       primary: {
-        main: '#90caf9'  // Color azul claro para botones
+        main: '#90caf9'
       },
       secondary: {
-        main: '#ce93d8'  // Color púrpura claro para acentos
-      }
-    },
-    components: {
-      MuiButton: {
-        styleOverrides: {
-          root: {
-            color: '#ffffff'  // Color blanco para el texto de los botones
-          }
-        }
+        main: '#ce93d8'
       }
     }
   });
@@ -45,15 +36,23 @@ function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Container 
-        maxWidth="md" 
-        sx={{
-          bgcolor: 'background.default',
-          minHeight: '100vh',
-          py: 4
-        }}
-      >
+      <Container maxWidth="md" sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 4 }}>
         <Box sx={{ my: 4 }}>
+          <Typography 
+            variant="h2" 
+            component="h1" 
+            gutterBottom 
+            align="center"
+            sx={{ 
+              color: 'primary.main',
+              fontWeight: 'bold',
+              mb: 4,
+              textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
+            }}
+          >
+            Simulador de Álgebra Lineal
+          </Typography>
+
           <MatrixInput onMatrixChange={setMatrix} />
           
           {matrix && (

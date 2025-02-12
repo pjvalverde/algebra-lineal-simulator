@@ -6,6 +6,8 @@ import MatrixProperties from './components/MatrixProperties';
 import MatrixOperations from './components/MatrixOperations';
 import VectorOperations from './components/VectorOperations';
 import * as MatrixOps from './utils/matrixOperations.js';
+import MatrixCalculations from './components/MatrixCalculations';
+import EigenvalueCalculations from './components/EigenvalueCalculations';
 
 // Crear tema oscuro
 const darkTheme = createTheme({
@@ -51,18 +53,16 @@ function App() {
 
           {matrix && (
             <>
-              <MatrixDisplay matrix={matrix} title="Entrada Original" />
+              <MatrixDisplay matrix={matrix} title="Matriz Original" />
               <MatrixDisplay 
                 matrix={MatrixOps.transpose(matrix)} 
                 title="Matriz Transpuesta" 
               />
-              <MatrixDisplay 
-                matrix={MatrixOps.conjugateTranspose(matrix)} 
-                title="Matriz Conjugada Transpuesta" 
-              />
               <MatrixProperties matrix={matrix} />
               <MatrixOperations matrix={matrix} />
               <VectorOperations matrix={matrix} />
+              <MatrixCalculations matrix={matrix} />
+              <EigenvalueCalculations matrix={matrix} />  {/* Nuevo componente */}
             </>
           )}
         </Box>

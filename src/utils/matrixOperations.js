@@ -1,9 +1,8 @@
 // Funciones utilitarias para operaciones con matrices
 export const parseMatrix = (input) => {
   try {
-    const rows = input.trim().split(';');
-    return rows.map(row => 
-      row.trim().split(',').map(num => parseFloat(num.trim()))
+    return input.split(';').map(row => 
+      row.split(',').map(num => parseFloat(num))
     );
   } catch (error) {
     throw new Error('Formato de matriz inválido');

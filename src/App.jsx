@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Container, Box, ThemeProvider, CssBaseline, Typography } from '@mui/material';
+import { Container, Box, ThemeProvider, CssBaseline } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
 import MatrixInput from './components/MatrixInput';
 import MatrixDisplay from './components/MatrixDisplay';
@@ -15,44 +15,15 @@ function App() {
   
   const darkTheme = createTheme({
     palette: {
-      mode: 'dark',
-      background: {
-        default: '#000000',
-        paper: '#121212'
-      },
-      text: {
-        primary: '#ffffff',
-        secondary: '#b3b3b3'
-      },
-      primary: {
-        main: '#90caf9'
-      },
-      secondary: {
-        main: '#ce93d8'
-      }
+      mode: 'dark'
     }
   });
 
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Container maxWidth="md" sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 4 }}>
+      <Container maxWidth="md">
         <Box sx={{ my: 4 }}>
-          <Typography 
-            variant="h2" 
-            component="h1" 
-            gutterBottom 
-            align="center"
-            sx={{ 
-              color: 'primary.main',
-              fontWeight: 'bold',
-              mb: 4,
-              textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
-            }}
-          >
-            Simulador de Álgebra Lineal
-          </Typography>
-
           <MatrixInput onMatrixChange={setMatrix} />
           
           {matrix && (

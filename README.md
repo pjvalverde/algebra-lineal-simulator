@@ -26,6 +26,10 @@ Este simulador de álgebra lineal te permite realizar operaciones matriciales co
    ```
 3. Inicia el servidor:
    ```bash
+   npm run dev
+   ```
+
+4. Abre [http://localhost:5173](http://localhost:5173) en tu navegador.
 
 ## 🌐 Demo
 Visita el simulador en: [https://pjvalverde.github.io/algebra-lineal-simulator/](https://pjvalverde.github.io/algebra-lineal-simulator/)

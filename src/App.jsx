@@ -1,56 +1,61 @@
 import React, { useState } from 'react';
-import { Container, Typography, Box, createTheme, ThemeProvider, CssBaseline } from '@mui/material';
+import { Container, Box, ThemeProvider, CssBaseline } from '@mui/material';
+import { createTheme } from '@mui/material/styles';
 import MatrixInput from './components/MatrixInput';
 import MatrixDisplay from './components/MatrixDisplay';
 import MatrixProperties from './components/MatrixProperties';
 import MatrixOperations from './components/MatrixOperations';
 import VectorOperations from './components/VectorOperations';
-import * as MatrixOps from './utils/matrixOperations.js';
 import MatrixCalculations from './components/MatrixCalculations';
 import EigenvalueCalculations from './components/EigenvalueCalculations';
-
-// Crear tema oscuro
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-    background: {
-      default: '#121212',
-      paper: '#1e1e1e',
-    },
-    text: {
-      primary: '#ffffff',
-      secondary: '#b3b3b3',
-    },
-  },
-});
+import * as MatrixOps from './utils/matrixOperations';
 
 function App() {
   const [matrix, setMatrix] = useState(null);
-
-  const handleMatrixSubmit = (newMatrix) => {
-    setMatrix(newMatrix);
-  };
+  
+  const darkTheme = createTheme({
+    palette: {
+      mode: 'dark',
+      background: {
+        default: '#000000',
+        paper: '#121212'
+      },
+      text: {
+        primary: '#ffffff',
+        secondary: '#b3b3b3'
+      },
+      primary: {
+        main: '#90caf9'  // Color azul claro para botones
+      },
+      secondary: {
+        main: '#ce93d8'  // Color púrpura claro para acentos
+      }
+    },
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            color: '#ffffff'  // Color blanco para el texto de los botones
+          }
+        }
+      }
+    }
+  });
 
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Container maxWidth="md">
-        <Box sx={{ 
-          my: 4,
+      <Container 
+        maxWidth="md" 
+        sx={{
+          bgcolor: 'background.default',
           minHeight: '100vh',
-          color: 'white'
-        }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Simulador de Álgebra Lineal
-          </Typography>
+          py: 4
+        }}
+      >
+        <Box sx={{ my: 4 }}>
+          <MatrixInput onMatrixChange={setMatrix} />
           
-          <Typography variant="body1" gutterBottom>
-            Ingrese una matriz o vector usando números separados por comas para las columnas
-            y punto y coma para las filas.
-          </Typography>
-
-          <MatrixInput onMatrixSubmit={handleMatrixSubmit} />
-
           {matrix && (
             <>
               <MatrixDisplay matrix={matrix} title="Matriz Original" />
@@ -62,7 +67,7 @@ function App() {
               <MatrixOperations matrix={matrix} />
               <VectorOperations matrix={matrix} />
               <MatrixCalculations matrix={matrix} />
-              <EigenvalueCalculations matrix={matrix} />  {/* Nuevo componente */}
+              <EigenvalueCalculations matrix={matrix} />
             </>
           )}
         </Box>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Button, Grid, Typography, Alert } from '@mui/material';
-import * as MatrixOps from '../utils/matrixOperations.js';
+import * as MatrixOps from "../../utils/matrixOperations.js";
 import MatrixDisplay from './MatrixDisplay';
 
 const EigenvalueCalculations = ({ matrix }) => {

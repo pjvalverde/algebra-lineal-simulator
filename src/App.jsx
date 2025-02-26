@@ -1,47 +1,31 @@
-import React, { useState } from 'react';
-import { Container, Box, ThemeProvider, CssBaseline } from '@mui/material';
-import { createTheme } from '@mui/material/styles';
-import MatrixInput from './components/MatrixInput';
-import MatrixDisplay from './components/MatrixDisplay';
-import MatrixProperties from './components/MatrixProperties';
-import MatrixOperations from './components/MatrixOperations';
-import VectorOperations from './components/VectorOperations';
-import MatrixCalculations from './components/MatrixCalculations';
-import EigenvalueCalculations from './components/EigenvalueCalculations';
-import * as MatrixOps from './utils/matrixOperations';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider, createTheme, CssBaseline, Box } from '@mui/material';
+import NavBar from './NavBar';
+import HomePage from './LandingPage';
+import AlgebraLinealPage from './AlgebraLinealPage';
+import CalculoMultivariante from './CalculoMultivariante';
 
 function App() {
-  const [matrix, setMatrix] = useState(null);
-  
-  const darkTheme = createTheme({
+  const theme = createTheme({
     palette: {
-      mode: 'dark'
-    }
+      mode: 'dark',
+    },
   });
 
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container maxWidth="md">
-        <Box sx={{ my: 4 }}>
-          <MatrixInput onMatrixChange={setMatrix} />
-          
-          {matrix && (
-            <>
-              <MatrixDisplay matrix={matrix} title="Matriz Original" />
-              <MatrixDisplay 
-                matrix={MatrixOps.transpose(matrix)} 
-                title="Matriz Transpuesta" 
-              />
-              <MatrixProperties matrix={matrix} />
-              <MatrixOperations matrix={matrix} />
-              <VectorOperations matrix={matrix} />
-              <MatrixCalculations matrix={matrix} />
-              <EigenvalueCalculations matrix={matrix} />
-            </>
-          )}
+      <Router>
+        <NavBar />
+        <Box sx={{ padding: '20px' }}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/algebra-lineal/*" element={<AlgebraLinealPage />} />
+            <Route path="/calculo-multivariante/*" element={<CalculoMultivariante />} />
+          </Routes>
         </Box>
-      </Container>
+      </Router>
     </ThemeProvider>
   );
 }

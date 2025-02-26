@@ -1,6 +1,6 @@
 import React from 'react';
 import { List, ListItem, ListItemText, Paper } from '@mui/material';
-import * as MatrixOps from '../utils/matrixOperations.js';
+import * as MatrixOps from "../../utils/matrixOperations.js";
 
 const MatrixProperties = ({ matrix }) => {
   if (!matrix) return null;

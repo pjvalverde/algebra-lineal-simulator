@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Button, Grid, Typography, Alert } from '@mui/material';
-import * as VectorOps from '../utils/vectorOperations.js';
-import MatrixDisplay from './MatrixDisplay';
+import * as MatrixOps from "../../utils/matrixOperations.js";
+import MatrixDisplay from "./MatrixDisplay";
 
 const VectorOperations = ({ matrix }) => {
   const [result, setResult] = useState(null);

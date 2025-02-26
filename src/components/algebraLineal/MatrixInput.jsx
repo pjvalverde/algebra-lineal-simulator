@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TextField, Button, Box, Alert } from '@mui/material';
-import * as MatrixOps from '../utils/matrixOperations';
+import * as MatrixOps from "../../utils/matrixOperations.js";
 
 const MatrixInput = ({ onMatrixChange }) => {
   const [input, setInput] = useState('');

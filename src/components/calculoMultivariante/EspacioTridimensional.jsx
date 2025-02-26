@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, Typography, Paper, Tabs, Tab, TextField, Button, Grid } from '@mui/material';
+import { Box, Typography, Paper, Tabs, Tab, TextField, Button, Grid, MenuItem, Select, FormControl, InputLabel, FormHelperText } from '@mui/material';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
 import * as THREE from 'three';
@@ -787,6 +787,475 @@ const SuperficiesEn3D = () => {
   );
 };
 
+// Componente para la transformación de coordenadas
+const TransformacionCoordenadas = () => {
+  const [tipoTransformacion, setTipoTransformacion] = useState('cartesianas-cilindricas');
+  const [coordenadas, setCoordenadas] = useState({
+    // Cartesianas
+    x: 1,
+    y: 1,
+    z: 1,
+    // Cilíndricas
+    r: 1,
+    theta: Math.PI/4,
+    z_cil: 1,
+    // Esféricas
+    rho: 1,
+    phi: Math.PI/4,
+    theta_esf: Math.PI/4
+  });
+  const [resultado, setResultado] = useState(null);
+  const [error, setError] = useState('');
+
+  // Helper para convertir grados a radianes
+  const toRadians = (degrees) => degrees * (Math.PI / 180);
+  
+  // Helper para convertir radianes a grados
+  const toDegrees = (radians) => radians * (180 / Math.PI);
+
+  const handleChangeTransformacion = (event) => {
+    setTipoTransformacion(event.target.value);
+    setResultado(null);
+    setError('');
+  };
+
+  const handleChangeCoordenada = (name, value) => {
+    setCoordenadas(prev => ({
+      ...prev,
+      [name]: parseFloat(value) || 0
+    }));
+  };
+
+  const calcularTransformacion = () => {
+    try {
+      setError('');
+      
+      switch (tipoTransformacion) {
+        case 'cartesianas-cilindricas': {
+          // Cartesianas a Cilíndricas: (x,y,z) -> (r,θ,z)
+          const { x, y, z } = coordenadas;
+          const r = Math.sqrt(x * x + y * y);
+          // Cálculo del ángulo theta teniendo en cuenta los cuadrantes
+          let theta = Math.atan2(y, x);
+          // Convertir a grados para mostrar
+          const thetaGrados = toDegrees(theta);
+          
+          setResultado({
+            tipo: 'Cilíndricas',
+            valores: [
+              { nombre: 'r', valor: r.toFixed(4) },
+              { nombre: 'θ (rad)', valor: theta.toFixed(4) },
+              { nombre: 'θ (grados)', valor: thetaGrados.toFixed(2) + '°' },
+              { nombre: 'z', valor: z.toFixed(4) }
+            ],
+            latex: `(r, \\theta, z) = (${r.toFixed(4)}, ${theta.toFixed(4)} \\text{ rad}, ${z.toFixed(4)})`
+          });
+          break;
+        }
+        
+        case 'cilindricas-cartesianas': {
+          // Cilíndricas a Cartesianas: (r,θ,z) -> (x,y,z)
+          const { r, theta, z_cil } = coordenadas;
+          const thetaRad = parseFloat(theta); // Asumimos que está en radianes
+          
+          const x = r * Math.cos(thetaRad);
+          const y = r * Math.sin(thetaRad);
+          
+          setResultado({
+            tipo: 'Cartesianas',
+            valores: [
+              { nombre: 'x', valor: x.toFixed(4) },
+              { nombre: 'y', valor: y.toFixed(4) },
+              { nombre: 'z', valor: z_cil.toFixed(4) }
+            ],
+            latex: `(x, y, z) = (${x.toFixed(4)}, ${y.toFixed(4)}, ${z_cil.toFixed(4)})`
+          });
+          break;
+        }
+        
+        case 'cartesianas-esfericas': {
+          // Cartesianas a Esféricas: (x,y,z) -> (ρ,θ,φ)
+          const { x, y, z } = coordenadas;
+          const rho = Math.sqrt(x * x + y * y + z * z);
+          let theta = Math.atan2(y, x);
+          let phi = Math.acos(z / rho);
+          
+          // Convertir a grados para mostrar
+          const thetaGrados = toDegrees(theta);
+          const phiGrados = toDegrees(phi);
+          
+          setResultado({
+            tipo: 'Esféricas',
+            valores: [
+              { nombre: 'ρ', valor: rho.toFixed(4) },
+              { nombre: 'θ (rad)', valor: theta.toFixed(4) },
+              { nombre: 'θ (grados)', valor: thetaGrados.toFixed(2) + '°' },
+              { nombre: 'φ (rad)', valor: phi.toFixed(4) },
+              { nombre: 'φ (grados)', valor: phiGrados.toFixed(2) + '°' }
+            ],
+            latex: `(\\rho, \\theta, \\phi) = (${rho.toFixed(4)}, ${theta.toFixed(4)} \\text{ rad}, ${phi.toFixed(4)} \\text{ rad})`
+          });
+          break;
+        }
+        
+        case 'esfericas-cartesianas': {
+          // Esféricas a Cartesianas: (ρ,θ,φ) -> (x,y,z)
+          const { rho, theta_esf, phi } = coordenadas;
+          
+          const x = rho * Math.sin(phi) * Math.cos(theta_esf);
+          const y = rho * Math.sin(phi) * Math.sin(theta_esf);
+          const z = rho * Math.cos(phi);
+          
+          setResultado({
+            tipo: 'Cartesianas',
+            valores: [
+              { nombre: 'x', valor: x.toFixed(4) },
+              { nombre: 'y', valor: y.toFixed(4) },
+              { nombre: 'z', valor: z.toFixed(4) }
+            ],
+            latex: `(x, y, z) = (${x.toFixed(4)}, ${y.toFixed(4)}, ${z.toFixed(4)})`
+          });
+          break;
+        }
+        
+        case 'cilindricas-esfericas': {
+          // Cilíndricas a Esféricas: (r,θ,z) -> (ρ,θ,φ)
+          const { r, theta, z_cil } = coordenadas;
+          
+          const rho = Math.sqrt(r * r + z_cil * z_cil);
+          const phi = Math.atan2(r, z_cil);
+          
+          // Convertir a grados para mostrar
+          const phiGrados = toDegrees(phi);
+          const thetaGrados = toDegrees(theta);
+          
+          setResultado({
+            tipo: 'Esféricas',
+            valores: [
+              { nombre: 'ρ', valor: rho.toFixed(4) },
+              { nombre: 'θ (rad)', valor: theta.toFixed(4) },
+              { nombre: 'θ (grados)', valor: thetaGrados.toFixed(2) + '°' },
+              { nombre: 'φ (rad)', valor: phi.toFixed(4) },
+              { nombre: 'φ (grados)', valor: phiGrados.toFixed(2) + '°' }
+            ],
+            latex: `(\\rho, \\theta, \\phi) = (${rho.toFixed(4)}, ${theta.toFixed(4)} \\text{ rad}, ${phi.toFixed(4)} \\text{ rad})`
+          });
+          break;
+        }
+        
+        case 'esfericas-cilindricas': {
+          // Esféricas a Cilíndricas: (ρ,θ,φ) -> (r,θ,z)
+          const { rho, theta_esf, phi } = coordenadas;
+          
+          const r = rho * Math.sin(phi);
+          const z = rho * Math.cos(phi);
+          
+          // Convertir a grados para mostrar
+          const thetaGrados = toDegrees(theta_esf);
+          
+          setResultado({
+            tipo: 'Cilíndricas',
+            valores: [
+              { nombre: 'r', valor: r.toFixed(4) },
+              { nombre: 'θ (rad)', valor: theta_esf.toFixed(4) },
+              { nombre: 'θ (grados)', valor: thetaGrados.toFixed(2) + '°' },
+              { nombre: 'z', valor: z.toFixed(4) }
+            ],
+            latex: `(r, \\theta, z) = (${r.toFixed(4)}, ${theta_esf.toFixed(4)} \\text{ rad}, ${z.toFixed(4)})`
+          });
+          break;
+        }
+        
+        default:
+          break;
+      }
+    } catch (err) {
+      setError('Error en el cálculo: ' + err.message);
+    }
+  };
+
+  // Renderizado de los campos de entrada según el tipo de transformación
+  const renderInputFields = () => {
+    switch (tipoTransformacion) {
+      case 'cartesianas-cilindricas':
+      case 'cartesianas-esfericas':
+        return (
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="x"
+                value={coordenadas.x}
+                onChange={(e) => handleChangeCoordenada('x', e.target.value)}
+                type="number"
+                margin="normal"
+                variant="outlined"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="y"
+                value={coordenadas.y}
+                onChange={(e) => handleChangeCoordenada('y', e.target.value)}
+                type="number"
+                margin="normal"
+                variant="outlined"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="z"
+                value={coordenadas.z}
+                onChange={(e) => handleChangeCoordenada('z', e.target.value)}
+                type="number"
+                margin="normal"
+                variant="outlined"
+              />
+            </Grid>
+          </Grid>
+        );
+      
+      case 'cilindricas-cartesianas':
+      case 'cilindricas-esfericas':
+        return (
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="r"
+                value={coordenadas.r}
+                onChange={(e) => handleChangeCoordenada('r', e.target.value)}
+                type="number"
+                inputProps={{ min: 0 }}
+                margin="normal"
+                variant="outlined"
+                helperText="Radio en el plano xy (≥ 0)"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="θ (radianes)"
+                value={coordenadas.theta}
+                onChange={(e) => handleChangeCoordenada('theta', e.target.value)}
+                type="number"
+                margin="normal"
+                variant="outlined"
+                helperText="Ángulo en el plano xy (radianes)"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="z"
+                value={coordenadas.z_cil}
+                onChange={(e) => handleChangeCoordenada('z_cil', e.target.value)}
+                type="number"
+                margin="normal"
+                variant="outlined"
+                helperText="Altura en el eje z"
+              />
+            </Grid>
+          </Grid>
+        );
+      
+      case 'esfericas-cartesianas':
+      case 'esfericas-cilindricas':
+        return (
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="ρ (rho)"
+                value={coordenadas.rho}
+                onChange={(e) => handleChangeCoordenada('rho', e.target.value)}
+                type="number"
+                inputProps={{ min: 0 }}
+                margin="normal"
+                variant="outlined"
+                helperText="Distancia al origen (≥ 0)"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="θ (theta, radianes)"
+                value={coordenadas.theta_esf}
+                onChange={(e) => handleChangeCoordenada('theta_esf', e.target.value)}
+                type="number"
+                margin="normal"
+                variant="outlined"
+                helperText="Ángulo en el plano xy (radianes)"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="φ (phi, radianes)"
+                value={coordenadas.phi}
+                onChange={(e) => handleChangeCoordenada('phi', e.target.value)}
+                type="number"
+                margin="normal"
+                variant="outlined"
+                helperText="Ángulo desde el eje z (radianes)"
+              />
+            </Grid>
+          </Grid>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        Transformación de Coordenadas
+      </Typography>
+      <Typography paragraph>
+        Convierte entre diferentes sistemas de coordenadas: cartesianas, cilíndricas y esféricas.
+      </Typography>
+      
+      <FormControl fullWidth margin="normal">
+        <InputLabel id="tipo-transformacion-label">Tipo de Transformación</InputLabel>
+        <Select
+          labelId="tipo-transformacion-label"
+          value={tipoTransformacion}
+          label="Tipo de Transformación"
+          onChange={handleChangeTransformacion}
+        >
+          <MenuItem value="cartesianas-cilindricas">Cartesianas a Cilíndricas</MenuItem>
+          <MenuItem value="cilindricas-cartesianas">Cilíndricas a Cartesianas</MenuItem>
+          <MenuItem value="cartesianas-esfericas">Cartesianas a Esféricas</MenuItem>
+          <MenuItem value="esfericas-cartesianas">Esféricas a Cartesianas</MenuItem>
+          <MenuItem value="cilindricas-esfericas">Cilíndricas a Esféricas</MenuItem>
+          <MenuItem value="esfericas-cilindricas">Esféricas a Cilíndricas</MenuItem>
+        </Select>
+      </FormControl>
+      
+      {renderInputFields()}
+      
+      <Button 
+        variant="contained" 
+        color="primary" 
+        onClick={calcularTransformacion}
+        sx={{ mt: 2 }}
+      >
+        Calcular
+      </Button>
+      
+      {error && (
+        <Typography color="error" sx={{ mt: 2 }}>
+          {error}
+        </Typography>
+      )}
+      
+      {resultado && (
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="subtitle1">Resultado en coordenadas {resultado.tipo}:</Typography>
+          <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, mt: 1 }}>
+            <BlockMath math={resultado.latex} />
+            
+            <Grid container spacing={2} sx={{ mt: 2 }}>
+              {resultado.valores.map((val, index) => (
+                <Grid item xs={6} sm={3} key={index}>
+                  <Typography variant="subtitle2">{val.nombre}:</Typography>
+                  <Typography>{val.valor}</Typography>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+          
+          {tipoTransformacion === 'cartesianas-cilindricas' && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2">Fórmulas utilizadas:</Typography>
+              <BlockMath math={`r = \\sqrt{x^2 + y^2}`} />
+              <BlockMath math={`\\theta = \\arctan(\\frac{y}{x})`} />
+              <BlockMath math={`z = z`} />
+            </Box>
+          )}
+          
+          {tipoTransformacion === 'cilindricas-cartesianas' && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2">Fórmulas utilizadas:</Typography>
+              <BlockMath math={`x = r\\cos(\\theta)`} />
+              <BlockMath math={`y = r\\sin(\\theta)`} />
+              <BlockMath math={`z = z`} />
+            </Box>
+          )}
+          
+          {tipoTransformacion === 'cartesianas-esfericas' && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2">Fórmulas utilizadas:</Typography>
+              <BlockMath math={`\\rho = \\sqrt{x^2 + y^2 + z^2}`} />
+              <BlockMath math={`\\theta = \\arctan(\\frac{y}{x})`} />
+              <BlockMath math={`\\phi = \\arccos(\\frac{z}{\\rho})`} />
+            </Box>
+          )}
+          
+          {tipoTransformacion === 'esfericas-cartesianas' && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2">Fórmulas utilizadas:</Typography>
+              <BlockMath math={`x = \\rho \\sin(\\phi)\\cos(\\theta)`} />
+              <BlockMath math={`y = \\rho \\sin(\\phi)\\sin(\\theta)`} />
+              <BlockMath math={`z = \\rho \\cos(\\phi)`} />
+            </Box>
+          )}
+          
+          {tipoTransformacion === 'cilindricas-esfericas' && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2">Fórmulas utilizadas:</Typography>
+              <BlockMath math={`\\rho = \\sqrt{r^2 + z^2}`} />
+              <BlockMath math={`\\theta = \\theta`} />
+              <BlockMath math={`\\phi = \\arctan(\\frac{r}{z})`} />
+            </Box>
+          )}
+          
+          {tipoTransformacion === 'esfericas-cilindricas' && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2">Fórmulas utilizadas:</Typography>
+              <BlockMath math={`r = \\rho \\sin(\\phi)`} />
+              <BlockMath math={`\\theta = \\theta`} />
+              <BlockMath math={`z = \\rho \\cos(\\phi)`} />
+            </Box>
+          )}
+        </Box>
+      )}
+      
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="subtitle2" gutterBottom>Notas sobre los sistemas de coordenadas:</Typography>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={4}>
+            <Typography variant="subtitle2" gutterBottom>Coordenadas Cartesianas (x, y, z)</Typography>
+            <Typography variant="body2">
+              Sistema de coordenadas rectangular donde cada punto en el espacio se identifica por tres números: sus proyecciones sobre los ejes x, y, z.
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Typography variant="subtitle2" gutterBottom>Coordenadas Cilíndricas (r, θ, z)</Typography>
+            <Typography variant="body2">
+              <strong>r</strong>: distancia desde el origen al punto proyectado en el plano xy<br />
+              <strong>θ</strong>: ángulo en el plano xy (medido desde el eje x positivo)<br />
+              <strong>z</strong>: altura (igual que en coordenadas cartesianas)
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Typography variant="subtitle2" gutterBottom>Coordenadas Esféricas (ρ, θ, φ)</Typography>
+            <Typography variant="body2">
+              <strong>ρ</strong>: distancia desde el origen al punto<br />
+              <strong>θ</strong>: ángulo en el plano xy (igual que en cilíndricas)<br />
+              <strong>φ</strong>: ángulo desde el eje z positivo
+            </Typography>
+          </Grid>
+        </Grid>
+      </Box>
+    </Box>
+  );
+};
+
 function EspacioTridimensional() {
   const [tabValue, setTabValue] = useState(0);
 
@@ -815,6 +1284,7 @@ function EspacioTridimensional() {
             <Tab label="Ecuaciones Paramétricas" />
             <Tab label="Vectores en 3D" />
             <Tab label="Superficies" />
+            <Tab label="Transformación de Coordenadas" />
           </Tabs>
         </Box>
         
@@ -822,6 +1292,7 @@ function EspacioTridimensional() {
           {tabValue === 0 && <EcuacionesParametricas />}
           {tabValue === 1 && <VectoresEn3D />}
           {tabValue === 2 && <SuperficiesEn3D />}
+          {tabValue === 3 && <TransformacionCoordenadas />}
         </Box>
       </Paper>
     </Box>

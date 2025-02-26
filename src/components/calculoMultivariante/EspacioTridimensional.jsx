@@ -2183,7 +2183,7 @@ function SuperficiesCuadricas() {
               </li>
               <li>
                 <Typography variant="body1" sx={{ color: '#e0e0e0' }}>
-                  Las secciones transversales perpendiculares al eje z (para |z| > c) son elipses.
+                  Las secciones transversales perpendiculares al eje z (para |z| {'>'}  c) son elipses.
                 </Typography>
               </li>
               <li>
@@ -2301,7 +2301,7 @@ function SuperficiesCuadricas() {
             <ul style={{ color: '#e0e0e0' }}>
               <li>
                 <Typography variant="body1" sx={{ color: '#e0e0e0' }}>
-                  Las secciones horizontales (z = k, k > 0) son elipses.
+                  Las secciones horizontales (z = k, k {'>'}  0) son elipses.
                 </Typography>
               </li>
               <li>

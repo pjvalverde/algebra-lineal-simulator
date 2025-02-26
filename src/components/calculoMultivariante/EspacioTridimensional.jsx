@@ -357,7 +357,102 @@ const VectoresEn3D = () => {
 
 const SuperficiesEn3D = () => {
   const canvasRef = useRef(null);
-  
+  const [tipoSuperficie, setTipoSuperficie] = useState('elipsoide');
+  const [parametros, setParametros] = useState({
+    elipsoide: { a: 1, b: 1.5, c: 2 },
+    hiperboloide: { a: 1, b: 1, c: 1, tipo: 'una hoja' },
+    paraboloide: { a: 0.5, b: 0.5, tipo: 'elíptico' }
+  });
+  const [sceneObjects, setSceneObjects] = useState({ scene: null, mesh: null });
+
+  const handleChangeTipoSuperficie = (event) => {
+    setTipoSuperficie(event.target.value);
+  };
+
+  const handleChangeParametro = (superficie, param, value) => {
+    const valorNumerico = parseFloat(value) || 0.1; // Evitamos valores 0 o negativos
+    setParametros(prev => ({
+      ...prev,
+      [superficie]: {
+        ...prev[superficie],
+        [param]: param === 'tipo' ? value : valorNumerico
+      }
+    }));
+  };
+
+  // Función para generar la geometría según el tipo de superficie
+  const generarGeometria = (tipo, params) => {
+    switch (tipo) {
+      case 'elipsoide': {
+        // Crear elipsoide (x²/a² + y²/b² + z²/c² = 1)
+        const { a, b, c } = params.elipsoide;
+        const geometry = new THREE.SphereGeometry(1, 32, 32);
+        geometry.scale(a, b, c);
+        return geometry;
+      }
+      case 'hiperboloide': {
+        // Crear hiperboloide (x²/a² + y²/b² - z²/c² = 1 o -x²/a² - y²/b² + z²/c² = 1)
+        const { a, b, c, tipo } = params.hiperboloide;
+        const esUnaHoja = tipo === 'una hoja';
+        
+        const segmentos = 50;
+        const geometry = new THREE.ParametricBufferGeometry((u, v, target) => {
+          // Mapeo de parámetros u,v a coordenadas 3D
+          u = u * Math.PI * 2;
+          v = v * 4 - 2; // v en [-2, 2]
+          
+          let x, y, z;
+          if (esUnaHoja) {
+            // Hiperboloide de una hoja: x²/a² + y²/b² - z²/c² = 1
+            const r = Math.sqrt(1 + v * v);
+            x = a * r * Math.cos(u);
+            y = b * r * Math.sin(u);
+            z = c * v;
+          } else {
+            // Hiperboloide de dos hojas: -x²/a² - y²/b² + z²/c² = 1
+            // Solo mostramos la parte superior (v >= 1)
+            const r = Math.sqrt(v * v - 1);
+            const signo = v >= 0 ? 1 : -1;
+            x = a * r * Math.cos(u);
+            y = b * r * Math.sin(u);
+            z = c * v;
+          }
+          
+          target.set(x, y, z);
+        }, segmentos, segmentos);
+        
+        return geometry;
+      }
+      case 'paraboloide': {
+        // Crear paraboloide (z = x²/a² + y²/b² o z = x²/a² - y²/b²)
+        const { a, b, tipo } = params.paraboloide;
+        const esEliptico = tipo === 'elíptico';
+        
+        const segmentos = 50;
+        const geometry = new THREE.ParametricBufferGeometry((u, v, target) => {
+          // u en [0, 1], v en [0, 1] -> mapear a coordenadas
+          const x = (u - 0.5) * 4; // x en [-2, 2]
+          const y = (v - 0.5) * 4; // y en [-2, 2]
+          let z;
+          
+          if (esEliptico) {
+            // Paraboloide elíptico: z = x²/a² + y²/b²
+            z = (x * x) / (a * a) + (y * y) / (b * b);
+          } else {
+            // Paraboloide hiperbólico: z = x²/a² - y²/b²
+            z = (x * x) / (a * a) - (y * y) / (b * b);
+          }
+          
+          target.set(x, y, z);
+        }, segmentos, segmentos);
+        
+        return geometry;
+      }
+      default:
+        return new THREE.SphereGeometry(1, 32, 32);
+    }
+  };
+
   useEffect(() => {
     if (!canvasRef.current) return;
     
@@ -395,17 +490,22 @@ const SuperficiesEn3D = () => {
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
     
-    // Crear ejemplo de superficie (esfera)
-    const geometrySphere = new THREE.SphereGeometry(1, 32, 32);
-    const materialSphere = new THREE.MeshPhongMaterial({ 
+    // Crear material para la superficie
+    const material = new THREE.MeshPhongMaterial({ 
       color: 0x0088ff,
       transparent: true,
       opacity: 0.7,
-      wireframe: false
+      wireframe: false,
+      side: THREE.DoubleSide
     });
     
-    const sphere = new THREE.Mesh(geometrySphere, materialSphere);
-    scene.add(sphere);
+    // Generar la geometría según el tipo de superficie
+    const geometry = generarGeometria(tipoSuperficie, parametros);
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+    
+    // Guardar referencia a los objetos de la escena para actualizar después
+    setSceneObjects({ scene, mesh });
     
     // Animación
     let frameId = null;
@@ -430,48 +530,244 @@ const SuperficiesEn3D = () => {
     };
   }, []);
 
+  // Efecto para actualizar la geometría cuando cambian los parámetros
+  useEffect(() => {
+    if (sceneObjects.mesh && sceneObjects.scene) {
+      // Eliminar la malla actual
+      sceneObjects.scene.remove(sceneObjects.mesh);
+      
+      // Generar nueva geometría con los parámetros actualizados
+      const geometry = generarGeometria(tipoSuperficie, parametros);
+      
+      // Crear nuevo material
+      const material = new THREE.MeshPhongMaterial({ 
+        color: tipoSuperficie === 'elipsoide' ? 0x0088ff : 
+               tipoSuperficie === 'hiperboloide' ? 0xff4400 : 0x00cc88,
+        transparent: true,
+        opacity: 0.7,
+        wireframe: false,
+        side: THREE.DoubleSide
+      });
+      
+      // Crear nueva malla y añadirla a la escena
+      const newMesh = new THREE.Mesh(geometry, material);
+      sceneObjects.scene.add(newMesh);
+      
+      // Actualizar la referencia a la malla
+      setSceneObjects(prev => ({ ...prev, mesh: newMesh }));
+    }
+  }, [tipoSuperficie, parametros]);
+
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h6" gutterBottom>
         Superficies en el Espacio 3D
       </Typography>
       <Typography paragraph>
-        Visualización de diferentes tipos de superficies en R³:
+        Visualización interactiva de superficies cuádricas en R³:
       </Typography>
       
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1">Planos:</Typography>
-            <BlockMath math="ax + by + cz + d = 0" />
-            <Typography>
-              Donde (a,b,c) es el vector normal al plano y d es la constante.
-            </Typography>
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="subtitle1" gutterBottom>Selecciona el tipo de superficie:</Typography>
+            <Box sx={{ display: 'flex', mb: 2 }}>
+              <Box 
+                component="select" 
+                value={tipoSuperficie} 
+                onChange={handleChangeTipoSuperficie}
+                sx={{ 
+                  width: '100%', 
+                  p: 1, 
+                  border: '1px solid #ddd', 
+                  borderRadius: 1,
+                  mb: 2
+                }}
+              >
+                <option value="elipsoide">Elipsoide</option>
+                <option value="hiperboloide">Hiperboloide</option>
+                <option value="paraboloide">Paraboloide</option>
+              </Box>
+            </Box>
           </Box>
           
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1">Esferas:</Typography>
-            <BlockMath math="(x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2 = r^2" />
-            <Typography>
-              Donde (x₀,y₀,z₀) es el centro y r el radio.
-            </Typography>
-          </Box>
+          {/* Parámetros según el tipo de superficie */}
+          {tipoSuperficie === 'elipsoide' && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>Elipsoide: x²/a² + y²/b² + z²/c² = 1</Typography>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={4}>
+                  <TextField
+                    fullWidth
+                    label="a"
+                    type="number"
+                    value={parametros.elipsoide.a}
+                    onChange={(e) => handleChangeParametro('elipsoide', 'a', e.target.value)}
+                    inputProps={{ min: 0.1, step: 0.1 }}
+                    margin="normal"
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={4}>
+                  <TextField
+                    fullWidth
+                    label="b"
+                    type="number"
+                    value={parametros.elipsoide.b}
+                    onChange={(e) => handleChangeParametro('elipsoide', 'b', e.target.value)}
+                    inputProps={{ min: 0.1, step: 0.1 }}
+                    margin="normal"
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={4}>
+                  <TextField
+                    fullWidth
+                    label="c"
+                    type="number"
+                    value={parametros.elipsoide.c}
+                    onChange={(e) => handleChangeParametro('elipsoide', 'c', e.target.value)}
+                    inputProps={{ min: 0.1, step: 0.1 }}
+                    margin="normal"
+                    variant="outlined"
+                  />
+                </Grid>
+              </Grid>
+              
+              <BlockMath math={`\\frac{x^2}{${parametros.elipsoide.a}^2} + \\frac{y^2}{${parametros.elipsoide.b}^2} + \\frac{z^2}{${parametros.elipsoide.c}^2} = 1`} />
+            </Box>
+          )}
           
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1">Cilindros:</Typography>
-            <BlockMath math="(x-x_0)^2 + (y-y_0)^2 = r^2" />
-            <Typography>
-              Cilindro circular con eje paralelo al eje z.
-            </Typography>
-          </Box>
+          {tipoSuperficie === 'hiperboloide' && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>Hiperboloide</Typography>
+              
+              <Box sx={{ mb: 2 }}>
+                <Box 
+                  component="select" 
+                  value={parametros.hiperboloide.tipo} 
+                  onChange={(e) => handleChangeParametro('hiperboloide', 'tipo', e.target.value)}
+                  sx={{ 
+                    width: '100%', 
+                    p: 1, 
+                    border: '1px solid #ddd', 
+                    borderRadius: 1,
+                    mb: 2
+                  }}
+                >
+                  <option value="una hoja">De una hoja</option>
+                  <option value="dos hojas">De dos hojas</option>
+                </Box>
+              </Box>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={4}>
+                  <TextField
+                    fullWidth
+                    label="a"
+                    type="number"
+                    value={parametros.hiperboloide.a}
+                    onChange={(e) => handleChangeParametro('hiperboloide', 'a', e.target.value)}
+                    inputProps={{ min: 0.1, step: 0.1 }}
+                    margin="normal"
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={4}>
+                  <TextField
+                    fullWidth
+                    label="b"
+                    type="number"
+                    value={parametros.hiperboloide.b}
+                    onChange={(e) => handleChangeParametro('hiperboloide', 'b', e.target.value)}
+                    inputProps={{ min: 0.1, step: 0.1 }}
+                    margin="normal"
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={4}>
+                  <TextField
+                    fullWidth
+                    label="c"
+                    type="number"
+                    value={parametros.hiperboloide.c}
+                    onChange={(e) => handleChangeParametro('hiperboloide', 'c', e.target.value)}
+                    inputProps={{ min: 0.1, step: 0.1 }}
+                    margin="normal"
+                    variant="outlined"
+                  />
+                </Grid>
+              </Grid>
+              
+              {parametros.hiperboloide.tipo === 'una hoja' ? (
+                <BlockMath math={`\\frac{x^2}{${parametros.hiperboloide.a}^2} + \\frac{y^2}{${parametros.hiperboloide.b}^2} - \\frac{z^2}{${parametros.hiperboloide.c}^2} = 1`} />
+              ) : (
+                <BlockMath math={`-\\frac{x^2}{${parametros.hiperboloide.a}^2} - \\frac{y^2}{${parametros.hiperboloide.b}^2} + \\frac{z^2}{${parametros.hiperboloide.c}^2} = 1`} />
+              )}
+            </Box>
+          )}
           
-          <Box>
-            <Typography variant="subtitle1">Paraboloides:</Typography>
-            <BlockMath math="z = a(x^2 + y^2)" />
-            <Typography>
-              Donde a es una constante que determina la apertura.
-            </Typography>
-          </Box>
+          {tipoSuperficie === 'paraboloide' && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>Paraboloide</Typography>
+              
+              <Box sx={{ mb: 2 }}>
+                <Box 
+                  component="select" 
+                  value={parametros.paraboloide.tipo} 
+                  onChange={(e) => handleChangeParametro('paraboloide', 'tipo', e.target.value)}
+                  sx={{ 
+                    width: '100%', 
+                    p: 1, 
+                    border: '1px solid #ddd', 
+                    borderRadius: 1,
+                    mb: 2
+                  }}
+                >
+                  <option value="elíptico">Elíptico</option>
+                  <option value="hiperbólico">Hiperbólico</option>
+                </Box>
+              </Box>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <TextField
+                    fullWidth
+                    label="a"
+                    type="number"
+                    value={parametros.paraboloide.a}
+                    onChange={(e) => handleChangeParametro('paraboloide', 'a', e.target.value)}
+                    inputProps={{ min: 0.1, step: 0.1 }}
+                    margin="normal"
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    fullWidth
+                    label="b"
+                    type="number"
+                    value={parametros.paraboloide.b}
+                    onChange={(e) => handleChangeParametro('paraboloide', 'b', e.target.value)}
+                    inputProps={{ min: 0.1, step: 0.1 }}
+                    margin="normal"
+                    variant="outlined"
+                  />
+                </Grid>
+              </Grid>
+              
+              {parametros.paraboloide.tipo === 'elíptico' ? (
+                <BlockMath math={`z = \\frac{x^2}{${parametros.paraboloide.a}^2} + \\frac{y^2}{${parametros.paraboloide.b}^2}`} />
+              ) : (
+                <BlockMath math={`z = \\frac{x^2}{${parametros.paraboloide.a}^2} - \\frac{y^2}{${parametros.paraboloide.b}^2}`} />
+              )}
+            </Box>
+          )}
+          
+          <Typography variant="subtitle2" sx={{ mt: 2, fontStyle: 'italic' }}>
+            Ajusta los parámetros para modificar la forma de la superficie.
+          </Typography>
         </Grid>
         
         <Grid item xs={12} md={6}>

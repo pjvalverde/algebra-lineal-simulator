@@ -1,6 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Box, Typography, Container, Grid, Card, CardContent, CardMedia, Button } from '@mui/material';
+// Importar las imágenes locales
+import planarImage from './images/planar2.png';
+import curvilinearImage from './images/curvilinear2.png';
 
 function HomePage() {
   return (
@@ -19,8 +22,8 @@ function HomePage() {
             <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <CardMedia
                 component="img"
-                height="140"
-                image="https://via.placeholder.com/600x140?text=Algebra+Lineal"
+                height="240"
+                image={planarImage}
                 alt="Álgebra Lineal"
               />
               <CardContent sx={{ flexGrow: 1 }}>
@@ -42,8 +45,8 @@ function HomePage() {
             <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <CardMedia
                 component="img"
-                height="140"
-                image="https://via.placeholder.com/600x140?text=Calculo+Multivariante"
+                height="240"
+                image={curvilinearImage}
                 alt="Cálculo Multivariante"
               />
               <CardContent sx={{ flexGrow: 1 }}>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Box, Typography, Container, Grid, Card, CardContent, CardMedia, Button } from '@mui/material';
-// Importar las imágenes locales
+// Importar las imágenes correctamente para Vite
 import planarImage from './images/planar2.png';
 import curvilinearImage from './images/curvilinear2.png';
 
@@ -25,6 +25,7 @@ function HomePage() {
                 height="240"
                 image={planarImage}
                 alt="Álgebra Lineal"
+                sx={{ objectFit: 'contain', bgcolor: '#121212' }}
               />
               <CardContent sx={{ flexGrow: 1 }}>
                 <Typography gutterBottom variant="h5" component="h2">
@@ -48,6 +49,7 @@ function HomePage() {
                 height="240"
                 image={curvilinearImage}
                 alt="Cálculo Multivariante"
+                sx={{ objectFit: 'contain', bgcolor: '#121212' }}
               />
               <CardContent sx={{ flexGrow: 1 }}>
                 <Typography gutterBottom variant="h5" component="h2">

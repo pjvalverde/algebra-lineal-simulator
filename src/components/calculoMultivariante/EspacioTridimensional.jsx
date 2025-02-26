@@ -3,6 +3,7 @@ import { Box, Typography, Paper, Tabs, Tab, TextField, Button, Grid } from '@mui
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
 import * as THREE from 'three';
+import { ParametricGeometry } from 'three/examples/jsm/geometries/ParametricGeometry.js';
 
 // Componentes para cada pestaña
 const EcuacionesParametricas = () => {
@@ -396,7 +397,7 @@ const SuperficiesEn3D = () => {
         const esUnaHoja = tipo === 'una hoja';
         
         const segmentos = 50;
-        const geometry = new THREE.ParametricBufferGeometry((u, v, target) => {
+        const geometry = new ParametricGeometry((u, v, target) => {
           // Mapeo de parámetros u,v a coordenadas 3D
           u = u * Math.PI * 2;
           v = v * 4 - 2; // v en [-2, 2]
@@ -412,7 +413,6 @@ const SuperficiesEn3D = () => {
             // Hiperboloide de dos hojas: -x²/a² - y²/b² + z²/c² = 1
             // Solo mostramos la parte superior (v >= 1)
             const r = Math.sqrt(v * v - 1);
-            const signo = v >= 0 ? 1 : -1;
             x = a * r * Math.cos(u);
             y = b * r * Math.sin(u);
             z = c * v;
@@ -429,7 +429,7 @@ const SuperficiesEn3D = () => {
         const esEliptico = tipo === 'elíptico';
         
         const segmentos = 50;
-        const geometry = new THREE.ParametricBufferGeometry((u, v, target) => {
+        const geometry = new ParametricGeometry((u, v, target) => {
           // u en [0, 1], v en [0, 1] -> mapear a coordenadas
           const x = (u - 0.5) * 4; // x en [-2, 2]
           const y = (v - 0.5) * 4; // y en [-2, 2]

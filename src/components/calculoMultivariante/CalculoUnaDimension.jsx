@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Tabs, Tab, TextField, Button, Grid, Paper, Divider, Select, MenuItem, FormControl, InputLabel, Slider } from '@mui/material';
+import { Box, Typography, Tabs, Tab, TextField, Button, Grid, Paper, Divider, Select, MenuItem, FormControl, InputLabel, Slider, FormControlLabel, Checkbox } from '@mui/material';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
 
@@ -1829,6 +1829,610 @@ const Pendulo = () => {
   );
 };
 
+// Componente para la subsección del Resorte
+const Resorte = () => {
+  const [parametros, setParametros] = useState({
+    masaObjeto: 1,
+    constanteResorte: 10,
+    amortiguamiento: 0.1,
+    amplitudInicial: 2,
+    velocidadInicial: 0,
+    posicionEquilibrio: 5,
+    mostrarGraficas: true
+  });
+  
+  const canvasRef = useRef(null);
+  const graficaRef = useRef(null);
+  const animationRef = useRef(null);
+  const datosSimulacion = useRef({
+    tiempo: 0,
+    posiciones: [],
+    velocidades: [],
+    aceleraciones: [],
+    tiempos: [],
+    enMovimiento: false
+  });
+  
+  const handleChangeParametro = (e) => {
+    const { name, value } = e.target;
+    setParametros(prev => ({
+      ...prev,
+      [name]: parseFloat(value)
+    }));
+  };
+
+  const handleSliderChange = (name) => (event, newValue) => {
+    setParametros(prev => ({
+      ...prev,
+      [name]: newValue
+    }));
+  };
+
+  // Función para dibujar el resorte en reposo
+  const dibujarResorteInicial = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Limpiar el canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // Parámetros de visualización
+    const anchoResorte = width * 0.8;
+    const posEquilibrio = parametros.posicionEquilibrio;
+    const desplazamiento = parametros.amplitudInicial;
+    const posicionActual = posEquilibrio + desplazamiento;
+    
+    // Dibujar pared izquierda
+    ctx.fillStyle = '#555555';
+    ctx.fillRect(10, height/4 - 50, 20, 100);
+    
+    // Dibujar resorte
+    dibujarResorte(ctx, 30, height/4, posicionActual, height/4, 20);
+    
+    // Dibujar masa
+    ctx.beginPath();
+    ctx.arc(posicionActual, height/4, 20 * Math.sqrt(parametros.masaObjeto), 0, 2 * Math.PI);
+    ctx.fillStyle = '#2196F3';
+    ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Dibujar línea de equilibrio
+    ctx.beginPath();
+    ctx.moveTo(posEquilibrio, height/4 - 80);
+    ctx.lineTo(posEquilibrio, height/4 + 80);
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Información inicial
+    ctx.fillStyle = '#000000';
+    ctx.font = '14px Arial';
+    ctx.fillText(`Posición de equilibrio: ${posEquilibrio} m`, 20, 30);
+    ctx.fillText(`Desplazamiento inicial: ${desplazamiento} m`, 20, 50);
+    ctx.fillText(`k = ${parametros.constanteResorte} N/m, m = ${parametros.masaObjeto} kg, c = ${parametros.amortiguamiento} Ns/m`, 20, 70);
+  };
+  
+  // Función auxiliar para dibujar un resorte entre dos puntos
+  const dibujarResorte = (ctx, x1, y1, x2, y2, vueltas) => {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const ang = Math.atan2(dy, dx);
+    
+    const segmentos = vueltas * 2;
+    const segmentoLongitud = len / segmentos;
+    
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    
+    for (let i = 0; i < segmentos; i++) {
+      const x = x1 + dx * (i / segmentos);
+      const y = y1 + dy * (i / segmentos);
+      const desplazamiento = (i % 2 === 0) ? 10 : -10;
+      
+      // Omitir las ondulaciones en los extremos
+      if (i === 0 || i === segmentos - 1) {
+        ctx.lineTo(x + dx / segmentos, y + dy / segmentos);
+      } else {
+        ctx.lineTo(x + dx / segmentos, y + dy / segmentos + desplazamiento);
+      }
+    }
+    
+    ctx.strokeStyle = '#FF5722';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  };
+  
+  // Función para iniciar la simulación
+  const iniciarSimulacion = () => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    
+    // Reiniciar datos de simulación
+    datosSimulacion.current = {
+      tiempo: 0,
+      posiciones: [],
+      velocidades: [],
+      aceleraciones: [],
+      tiempos: [],
+      enMovimiento: true
+    };
+    
+    // Condiciones iniciales
+    const x0 = parametros.amplitudInicial;
+    const v0 = parametros.velocidadInicial;
+    const k = parametros.constanteResorte;
+    const m = parametros.masaObjeto;
+    const c = parametros.amortiguamiento;
+    
+    // Valores instantáneos
+    let x = x0;
+    let v = v0;
+    let a = -(k/m) * x - (c/m) * v;
+    
+    // Guardar valores iniciales
+    datosSimulacion.current.posiciones.push(x);
+    datosSimulacion.current.velocidades.push(v);
+    datosSimulacion.current.aceleraciones.push(a);
+    datosSimulacion.current.tiempos.push(0);
+    
+    const dt = 0.016; // Paso de tiempo (aproximadamente 60 FPS)
+    
+    const simular = () => {
+      if (!datosSimulacion.current.enMovimiento) return;
+      
+      // Actualizar tiempo
+      datosSimulacion.current.tiempo += dt;
+      const t = datosSimulacion.current.tiempo;
+      
+      // Calcular nueva aceleración
+      a = -(k/m) * x - (c/m) * v;
+      
+      // Integración numérica (método de Euler)
+      v += a * dt;
+      x += v * dt;
+      
+      // Guardar datos (limitando a 500 puntos)
+      if (datosSimulacion.current.tiempos.length >= 500) {
+        datosSimulacion.current.posiciones.shift();
+        datosSimulacion.current.velocidades.shift();
+        datosSimulacion.current.aceleraciones.shift();
+        datosSimulacion.current.tiempos.shift();
+      }
+      
+      datosSimulacion.current.posiciones.push(x);
+      datosSimulacion.current.velocidades.push(v);
+      datosSimulacion.current.aceleraciones.push(a);
+      datosSimulacion.current.tiempos.push(t);
+      
+      // Dibujar estado actual
+      dibujarEstadoActual();
+      
+      // Continuar la simulación
+      animationRef.current = requestAnimationFrame(simular);
+    };
+    
+    simular();
+  };
+  
+  // Función para detener la simulación
+  const detenerSimulacion = () => {
+    datosSimulacion.current.enMovimiento = false;
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+  };
+  
+  // Función para dibujar el estado actual del sistema
+  const dibujarEstadoActual = () => {
+    const canvas = canvasRef.current;
+    const grafica = graficaRef.current;
+    if (!canvas || !grafica) return;
+    
+    const ctxCanvas = canvas.getContext('2d');
+    const ctxGrafica = grafica.getContext('2d');
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    const graficaWidth = grafica.width;
+    const graficaHeight = grafica.height;
+    
+    // Limpiar canvas
+    ctxCanvas.clearRect(0, 0, canvasWidth, canvasHeight);
+    ctxGrafica.clearRect(0, 0, graficaWidth, graficaHeight);
+    
+    // Parámetros de simulación
+    const posEquilibrio = parametros.posicionEquilibrio;
+    const x = datosSimulacion.current.posiciones[datosSimulacion.current.posiciones.length - 1];
+    const v = datosSimulacion.current.velocidades[datosSimulacion.current.velocidades.length - 1];
+    const a = datosSimulacion.current.aceleraciones[datosSimulacion.current.aceleraciones.length - 1];
+    const t = datosSimulacion.current.tiempo;
+    
+    // Dibujar texto con valores actuales
+    ctxCanvas.fillStyle = '#000000';
+    ctxCanvas.font = '14px Arial';
+    ctxCanvas.fillText(`Tiempo: ${t.toFixed(2)} s`, 20, 30);
+    ctxCanvas.fillText(`Posición: ${x.toFixed(2)} m`, 20, 50);
+    ctxCanvas.fillText(`Velocidad: ${v.toFixed(2)} m/s`, 20, 70);
+    ctxCanvas.fillText(`Aceleración: ${a.toFixed(2)} m/s²`, 20, 90);
+    
+    // Ecuaciones de movimiento
+    ctxCanvas.fillText("Ecuación diferencial: m·a + c·v + k·x = 0", canvasWidth - 300, 30);
+    ctxCanvas.fillText(`x(t) = Ae^(-ct/2m)·cos(ωt + φ)`, canvasWidth - 300, 50);
+    
+    // Dibujar pared izquierda
+    ctxCanvas.fillStyle = '#555555';
+    ctxCanvas.fillRect(10, canvasHeight/4 - 50, 20, 100);
+    
+    // Dibujar línea de equilibrio
+    ctxCanvas.beginPath();
+    ctxCanvas.moveTo(posEquilibrio, canvasHeight/4 - 80);
+    ctxCanvas.lineTo(posEquilibrio, canvasHeight/4 + 80);
+    ctxCanvas.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+    ctxCanvas.lineWidth = 2;
+    ctxCanvas.stroke();
+    
+    // Dibujar resorte
+    const posicionActual = posEquilibrio + x;
+    dibujarResorte(ctxCanvas, 30, canvasHeight/4, posicionActual, canvasHeight/4, 20);
+    
+    // Dibujar masa
+    ctxCanvas.beginPath();
+    ctxCanvas.arc(posicionActual, canvasHeight/4, 20 * Math.sqrt(parametros.masaObjeto), 0, 2 * Math.PI);
+    ctxCanvas.fillStyle = '#2196F3';
+    ctxCanvas.fill();
+    ctxCanvas.strokeStyle = '#000000';
+    ctxCanvas.lineWidth = 2;
+    ctxCanvas.stroke();
+    
+    // Vectores de velocidad y aceleración
+    const escalaVector = 20;
+    
+    // Vector de velocidad
+    if (Math.abs(v) > 0.1) {
+      ctxCanvas.beginPath();
+      ctxCanvas.moveTo(posicionActual, canvasHeight/4);
+      ctxCanvas.lineTo(posicionActual + v * escalaVector, canvasHeight/4);
+      ctxCanvas.strokeStyle = '#00FF00';
+      ctxCanvas.lineWidth = 2;
+      ctxCanvas.stroke();
+      
+      // Flecha de velocidad
+      const angV = v > 0 ? 0 : Math.PI;
+      ctxCanvas.beginPath();
+      ctxCanvas.moveTo(posicionActual + v * escalaVector, canvasHeight/4);
+      ctxCanvas.lineTo(posicionActual + v * escalaVector - 10 * Math.cos(angV - Math.PI/6), canvasHeight/4 - 10 * Math.sin(angV - Math.PI/6));
+      ctxCanvas.lineTo(posicionActual + v * escalaVector - 10 * Math.cos(angV + Math.PI/6), canvasHeight/4 - 10 * Math.sin(angV + Math.PI/6));
+      ctxCanvas.closePath();
+      ctxCanvas.fillStyle = '#00FF00';
+      ctxCanvas.fill();
+    }
+    
+    // Vector de aceleración
+    if (Math.abs(a) > 0.1) {
+      ctxCanvas.beginPath();
+      ctxCanvas.moveTo(posicionActual, canvasHeight/4);
+      ctxCanvas.lineTo(posicionActual + a * escalaVector, canvasHeight/4);
+      ctxCanvas.strokeStyle = '#FF0000';
+      ctxCanvas.lineWidth = 2;
+      ctxCanvas.stroke();
+      
+      // Flecha de aceleración
+      const angA = a > 0 ? 0 : Math.PI;
+      ctxCanvas.beginPath();
+      ctxCanvas.moveTo(posicionActual + a * escalaVector, canvasHeight/4);
+      ctxCanvas.lineTo(posicionActual + a * escalaVector - 10 * Math.cos(angA - Math.PI/6), canvasHeight/4 - 10 * Math.sin(angA - Math.PI/6));
+      ctxCanvas.lineTo(posicionActual + a * escalaVector - 10 * Math.cos(angA + Math.PI/6), canvasHeight/4 - 10 * Math.sin(angA + Math.PI/6));
+      ctxCanvas.closePath();
+      ctxCanvas.fillStyle = '#FF0000';
+      ctxCanvas.fill();
+    }
+    
+    // Dibujar gráficas si están habilitadas
+    if (parametros.mostrarGraficas) {
+      // Configuración de la gráfica
+      const margenIzq = 50;
+      const margenDer = 30;
+      const margenSup = 20;
+      const margenInf = 30;
+      const graficaAncho = graficaWidth - margenIzq - margenDer;
+      const graficaAlto = (graficaHeight - margenSup - margenInf) / 3; // Tres gráficas
+      
+      // Calcular escalas
+      const tiempos = datosSimulacion.current.tiempos;
+      const posiciones = datosSimulacion.current.posiciones;
+      const velocidades = datosSimulacion.current.velocidades;
+      const aceleraciones = datosSimulacion.current.aceleraciones;
+      
+      const maxTiempo = Math.max(...tiempos);
+      const minTiempo = Math.max(0, maxTiempo - 5); // Mostrar últimos 5 segundos
+      
+      const maxPos = Math.max(Math.abs(Math.min(...posiciones)), Math.abs(Math.max(...posiciones)), 0.1);
+      const maxVel = Math.max(Math.abs(Math.min(...velocidades)), Math.abs(Math.max(...velocidades)), 0.1);
+      const maxAcc = Math.max(Math.abs(Math.min(...aceleraciones)), Math.abs(Math.max(...aceleraciones)), 0.1);
+      
+      // Función para transformar coordenadas
+      const transformarX = (t) => margenIzq + (t - minTiempo) / (maxTiempo - minTiempo) * graficaAncho;
+      
+      const transformarYPos = (y) => margenSup + graficaAlto / 2 - (y / maxPos) * (graficaAlto / 2 * 0.9);
+      const transformarYVel = (y) => margenSup + graficaAlto * 1.5 - (y / maxVel) * (graficaAlto / 2 * 0.9);
+      const transformarYAcc = (y) => margenSup + graficaAlto * 2.5 - (y / maxAcc) * (graficaAlto / 2 * 0.9);
+      
+      // Dibujar ejes
+      ctxGrafica.strokeStyle = '#000000';
+      ctxGrafica.lineWidth = 1;
+      
+      // Ejes de posición
+      ctxGrafica.beginPath();
+      ctxGrafica.moveTo(margenIzq, margenSup);
+      ctxGrafica.lineTo(margenIzq, margenSup + graficaAlto);
+      ctxGrafica.moveTo(margenIzq, margenSup + graficaAlto / 2);
+      ctxGrafica.lineTo(graficaWidth - margenDer, margenSup + graficaAlto / 2);
+      ctxGrafica.stroke();
+      
+      // Ejes de velocidad
+      ctxGrafica.beginPath();
+      ctxGrafica.moveTo(margenIzq, margenSup + graficaAlto);
+      ctxGrafica.lineTo(margenIzq, margenSup + graficaAlto * 2);
+      ctxGrafica.moveTo(margenIzq, margenSup + graficaAlto * 1.5);
+      ctxGrafica.lineTo(graficaWidth - margenDer, margenSup + graficaAlto * 1.5);
+      ctxGrafica.stroke();
+      
+      // Ejes de aceleración
+      ctxGrafica.beginPath();
+      ctxGrafica.moveTo(margenIzq, margenSup + graficaAlto * 2);
+      ctxGrafica.lineTo(margenIzq, margenSup + graficaAlto * 3);
+      ctxGrafica.moveTo(margenIzq, margenSup + graficaAlto * 2.5);
+      ctxGrafica.lineTo(graficaWidth - margenDer, margenSup + graficaAlto * 2.5);
+      ctxGrafica.stroke();
+      
+      // Etiquetas
+      ctxGrafica.fillStyle = '#000000';
+      ctxGrafica.font = '12px Arial';
+      ctxGrafica.fillText('Posición (m)', margenIzq - 40, margenSup + graficaAlto / 2);
+      ctxGrafica.fillText('Velocidad (m/s)', margenIzq - 40, margenSup + graficaAlto * 1.5);
+      ctxGrafica.fillText('Aceleración (m/s²)', margenIzq - 40, margenSup + graficaAlto * 2.5);
+      ctxGrafica.fillText('Tiempo (s)', graficaWidth - margenDer, margenSup + graficaAlto * 3 + 15);
+      
+      // Filtramos los puntos para mostrar solo los últimos 5 segundos
+      const puntosVisibles = tiempos.map((t, i) => ({
+        t,
+        pos: posiciones[i],
+        vel: velocidades[i],
+        acc: aceleraciones[i]
+      })).filter(p => p.t >= minTiempo);
+      
+      // Dibujar las gráficas
+      if (puntosVisibles.length > 1) {
+        // Gráfica de posición
+        ctxGrafica.beginPath();
+        ctxGrafica.moveTo(transformarX(puntosVisibles[0].t), transformarYPos(puntosVisibles[0].pos));
+        for (let i = 1; i < puntosVisibles.length; i++) {
+          ctxGrafica.lineTo(transformarX(puntosVisibles[i].t), transformarYPos(puntosVisibles[i].pos));
+        }
+        ctxGrafica.strokeStyle = '#2196F3';
+        ctxGrafica.lineWidth = 2;
+        ctxGrafica.stroke();
+        
+        // Gráfica de velocidad
+        ctxGrafica.beginPath();
+        ctxGrafica.moveTo(transformarX(puntosVisibles[0].t), transformarYVel(puntosVisibles[0].vel));
+        for (let i = 1; i < puntosVisibles.length; i++) {
+          ctxGrafica.lineTo(transformarX(puntosVisibles[i].t), transformarYVel(puntosVisibles[i].vel));
+        }
+        ctxGrafica.strokeStyle = '#00FF00';
+        ctxGrafica.lineWidth = 2;
+        ctxGrafica.stroke();
+        
+        // Gráfica de aceleración
+        ctxGrafica.beginPath();
+        ctxGrafica.moveTo(transformarX(puntosVisibles[0].t), transformarYAcc(puntosVisibles[0].acc));
+        for (let i = 1; i < puntosVisibles.length; i++) {
+          ctxGrafica.lineTo(transformarX(puntosVisibles[i].t), transformarYAcc(puntosVisibles[i].acc));
+        }
+        ctxGrafica.strokeStyle = '#FF0000';
+        ctxGrafica.lineWidth = 2;
+        ctxGrafica.stroke();
+        
+        // Fórmulas
+        const k = parametros.constanteResorte;
+        const m = parametros.masaObjeto;
+        const c = parametros.amortiguamiento;
+        const omega = Math.sqrt(k/m - Math.pow(c/(2*m), 2));
+        
+        // Mostrar ecuaciones específicas con valores
+        ctxGrafica.fillStyle = '#000000';
+        ctxGrafica.font = '14px Arial';
+        ctxGrafica.fillText(`Ecuación de posición: x(t) = Ae^(-${(c/(2*m)).toFixed(2)}t)·cos(${omega.toFixed(2)}t + φ)`, graficaWidth - 380, margenSup + 15);
+        ctxGrafica.fillText(`Ecuación de velocidad: v(t) = dx/dt`, graficaWidth - 380, margenSup + graficaAlto + 15);
+        ctxGrafica.fillText(`Ecuación de aceleración: a(t) = -(${(k/m).toFixed(2)})x - (${(c/m).toFixed(2)})v`, graficaWidth - 380, margenSup + graficaAlto * 2 + 15);
+      }
+    }
+  };
+  
+  // Inicializar visualización cuando cambia algún parámetro
+  useEffect(() => {
+    dibujarResorteInicial();
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [parametros]);
+
+  return (
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        El Resorte: Movimiento Armónico Simple
+      </Typography>
+      
+      <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ height: 400, width: '100%', position: 'relative' }}>
+              <canvas ref={canvasRef} width={600} height={400} style={{ border: '1px solid #ddd' }} />
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={iniciarSimulacion}
+                sx={{ mr: 2 }}
+              >
+                Iniciar Simulación
+              </Button>
+              <Button 
+                variant="outlined" 
+                color="error" 
+                onClick={detenerSimulacion}
+              >
+                Detener
+              </Button>
+            </Box>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle1">Parámetros del Resorte:</Typography>
+            <Box sx={{ mt: 2 }}>
+              <Typography gutterBottom>Constante del resorte (N/m): {parametros.constanteResorte}</Typography>
+              <Slider
+                value={parametros.constanteResorte}
+                onChange={handleSliderChange('constanteResorte')}
+                min={1}
+                max={30}
+                step={0.5}
+                valueLabelDisplay="auto"
+              />
+            </Box>
+            <Box sx={{ mt: 2 }}>
+              <Typography gutterBottom>Masa (kg): {parametros.masaObjeto}</Typography>
+              <Slider
+                value={parametros.masaObjeto}
+                onChange={handleSliderChange('masaObjeto')}
+                min={0.1}
+                max={5}
+                step={0.1}
+                valueLabelDisplay="auto"
+              />
+            </Box>
+            <Box sx={{ mt: 2 }}>
+              <Typography gutterBottom>Amortiguamiento (Ns/m): {parametros.amortiguamiento}</Typography>
+              <Slider
+                value={parametros.amortiguamiento}
+                onChange={handleSliderChange('amortiguamiento')}
+                min={0}
+                max={2}
+                step={0.05}
+                valueLabelDisplay="auto"
+              />
+            </Box>
+            <Box sx={{ mt: 2 }}>
+              <Typography gutterBottom>Amplitud inicial (m): {parametros.amplitudInicial}</Typography>
+              <Slider
+                value={parametros.amplitudInicial}
+                onChange={handleSliderChange('amplitudInicial')}
+                min={-5}
+                max={5}
+                step={0.1}
+                valueLabelDisplay="auto"
+              />
+            </Box>
+            <Box sx={{ mt: 2 }}>
+              <Typography gutterBottom>Posición de equilibrio (m): {parametros.posicionEquilibrio}</Typography>
+              <Slider
+                value={parametros.posicionEquilibrio}
+                onChange={handleSliderChange('posicionEquilibrio')}
+                min={100}
+                max={300}
+                step={10}
+                valueLabelDisplay="auto"
+              />
+            </Box>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={parametros.mostrarGraficas}
+                  onChange={(e) => setParametros({...parametros, mostrarGraficas: e.target.checked})}
+                  name="mostrarGraficas"
+                />
+              }
+              label="Mostrar gráficas de posición, velocidad y aceleración"
+            />
+          </Grid>
+        </Grid>
+      </Paper>
+      
+      {parametros.mostrarGraficas && (
+        <Paper elevation={3} sx={{ p: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Gráficas del Movimiento Armónico Simple
+          </Typography>
+          <Box sx={{ height: 500, width: '100%', position: 'relative' }}>
+            <canvas ref={graficaRef} width={1000} height={500} style={{ border: '1px solid #ddd' }} />
+          </Box>
+        </Paper>
+      )}
+      
+      <Paper elevation={3} sx={{ p: 2, mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Conceptos Teóricos del Movimiento Armónico Simple
+        </Typography>
+        <Typography variant="subtitle1">Ecuación Diferencial:</Typography>
+        <BlockMath math={`m\\frac{d^2x}{dt^2} + c\\frac{dx}{dt} + kx = 0`} />
+        <Typography variant="body1" paragraph>
+          Donde:
+          <ul>
+            <li><InlineMath math="m" />: masa del objeto</li>
+            <li><InlineMath math="c" />: coeficiente de amortiguamiento</li>
+            <li><InlineMath math="k" />: constante del resorte</li>
+            <li><InlineMath math="x" />: desplazamiento desde la posición de equilibrio</li>
+          </ul>
+        </Typography>
+        
+        <Typography variant="subtitle1">Solución para el caso no amortiguado (c = 0):</Typography>
+        <BlockMath math={`x(t) = A\\cos(\\omega t + \\phi)`} />
+        <Typography variant="body1" paragraph>
+          Donde:
+          <ul>
+            <li><InlineMath math="A" />: amplitud del movimiento</li>
+            <li><InlineMath math="\\omega = \\sqrt{\\frac{k}{m}}" />: frecuencia angular</li>
+            <li><InlineMath math="\\phi" />: fase inicial</li>
+          </ul>
+        </Typography>
+        
+        <Typography variant="subtitle1">Solución para el caso subamortiguado (c² < 4mk):</Typography>
+        <BlockMath math={`x(t) = Ae^{-\\frac{c}{2m}t}\\cos(\\omega' t + \\phi)`} />
+        <Typography variant="body1" paragraph>
+          Donde:
+          <ul>
+            <li><InlineMath math="\\omega' = \\sqrt{\\frac{k}{m} - \\left(\\frac{c}{2m}\\right)^2}" />: frecuencia angular reducida</li>
+          </ul>
+        </Typography>
+        
+        <Typography variant="subtitle1">Ecuaciones derivadas:</Typography>
+        <BlockMath math={`v(t) = \\frac{dx}{dt} = -Ae^{-\\frac{c}{2m}t}\\left[\\frac{c}{2m}\\cos(\\omega' t + \\phi) + \\omega'\\sin(\\omega' t + \\phi)\\right]`} />
+        <BlockMath math={`a(t) = \\frac{d^2x}{dt^2} = -\\frac{k}{m}x - \\frac{c}{m}v`} />
+        
+        <Typography variant="subtitle1">Período y frecuencia:</Typography>
+        <BlockMath math={`T = \\frac{2\\pi}{\\omega'}, \\quad f = \\frac{1}{T} = \\frac{\\omega'}{2\\pi}`} />
+        
+        <Typography variant="subtitle1">Energía mecánica:</Typography>
+        <BlockMath math={`E = \\frac{1}{2}kx^2 + \\frac{1}{2}mv^2`} />
+        <Typography variant="body1">
+          La energía mecánica se conserva en ausencia de amortiguamiento (c = 0). Con amortiguamiento, 
+          la energía decrece exponencialmente con el tiempo.
+        </Typography>
+      </Paper>
+    </Box>
+  );
+};
+
 // Componente principal que integra todas las subsecciones
 function CalculoUnaDimension() {
   const [subseccion, setSubseccion] = useState(0);
@@ -1848,6 +2452,7 @@ function CalculoUnaDimension() {
           <Tab label="Razones de Cambio y Derivadas en Física" />
           <Tab label="Optimización aplicada a la Física" />
           <Tab label="El Péndulo" />
+          <Tab label="El Resorte" />
           {/* Espacio para futuras subsecciones
           <Tab label="Integrales Básicas" /> 
           */}
@@ -1857,8 +2462,9 @@ function CalculoUnaDimension() {
       {subseccion === 0 && <RazonesDeCambio />}
       {subseccion === 1 && <OptimizacionFisica />}
       {subseccion === 2 && <Pendulo />}
+      {subseccion === 3 && <Resorte />}
       {/* Espacio para futuras subsecciones
-      {subseccion === 3 && <IntegralesBasicas />}
+      {subseccion === 4 && <IntegralesBasicas />}
       */}
     </Box>
   );

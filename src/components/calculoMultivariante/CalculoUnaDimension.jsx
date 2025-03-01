@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Typography, Tabs, Tab, TextField, Button, Grid, Paper, Divider, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Typography, Tabs, Tab, TextField, Button, Grid, Paper, Divider, Select, MenuItem, FormControl, InputLabel, Slider } from '@mui/material';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
 
@@ -875,6 +875,720 @@ const OptimizacionFisica = () => {
   );
 };
 
+// Componente para la subsección del Péndulo
+const Pendulo = () => {
+  const [tipoPendulo, setTipoPendulo] = useState('simple');
+  const [parametros, setParametros] = useState({
+    // Péndulo simple
+    longitud: 1,
+    gravedad: 9.8,
+    masa: 1,
+    anguloInicial: 30,
+    velocidadAngularInicial: 0,
+    amortiguamiento: 0.1,
+    // Péndulo doble
+    longitud1: 1,
+    longitud2: 1,
+    masa1: 1,
+    masa2: 1,
+    angulo1Inicial: 30,
+    angulo2Inicial: 0,
+    velocidadAngular1Inicial: 0,
+    velocidadAngular2Inicial: 0
+  });
+  
+  const canvasRef = useRef(null);
+  const animationRef = useRef(null);
+  const canvasDobleRef = useRef(null);
+  const animationDobleRef = useRef(null);
+
+  const handleChangeTipo = (event) => {
+    setTipoPendulo(event.target.value);
+  };
+
+  const handleChangeParametro = (e) => {
+    const { name, value } = e.target;
+    setParametros(prev => ({
+      ...prev,
+      [name]: typeof value === 'string' ? parseFloat(value) : value
+    }));
+  };
+
+  const handleSliderChange = (name) => (event, newValue) => {
+    setParametros(prev => ({
+      ...prev,
+      [name]: newValue
+    }));
+  };
+
+  // Función para dibujar el péndulo simple
+  const dibujarPenduloSimple = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 4;
+    
+    // Convertir ángulo de grados a radianes
+    const anguloRad = parametros.anguloInicial * Math.PI / 180;
+    const longitud = parametros.longitud * 100; // Escalar para visualización
+    
+    // Calcular posición del peso
+    const x = centerX + longitud * Math.sin(anguloRad);
+    const y = centerY + longitud * Math.cos(anguloRad);
+    
+    // Limpiar el canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // Dibujar el punto de pivote
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = 'black';
+    ctx.fill();
+    
+    // Dibujar la cuerda
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Dibujar el peso
+    ctx.beginPath();
+    const radioMasa = 15 * Math.sqrt(parametros.masa); // El radio depende de la masa
+    ctx.arc(x, y, radioMasa, 0, 2 * Math.PI);
+    ctx.fillStyle = 'red';
+    ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  };
+
+  // Función para simular y animar el péndulo simple
+  const animarPenduloSimple = () => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 4;
+    
+    // Parámetros físicos
+    const L = parametros.longitud;
+    const g = parametros.gravedad;
+    const m = parametros.masa;
+    const b = parametros.amortiguamiento; // Coeficiente de amortiguamiento
+    
+    // Condiciones iniciales
+    let theta = parametros.anguloInicial * Math.PI / 180;
+    let omega = parametros.velocidadAngularInicial;
+    let t = 0;
+    const dt = 0.016; // Aproximadamente 60 FPS
+    
+    const simular = () => {
+      // Ecuación diferencial del péndulo simple con amortiguamiento:
+      // d²θ/dt² + (b/m)·dθ/dt + (g/L)·sin(θ) = 0
+      
+      // Cálculo de la aceleración angular
+      const alpha = -(g / L) * Math.sin(theta) - (b / m) * omega;
+      
+      // Integración numérica (método de Euler)
+      omega += alpha * dt;
+      theta += omega * dt;
+      
+      // Limpiar el canvas
+      ctx.clearRect(0, 0, width, height);
+      
+      // Dibujar ecuación del péndulo
+      ctx.fillStyle = 'black';
+      ctx.font = '14px Arial';
+      ctx.fillText('Ecuación del péndulo simple: d²θ/dt² + (b/m)·dθ/dt + (g/L)·sin(θ) = 0', 10, 20);
+      
+      // Calcular la posición del peso
+      const x = centerX + L * 100 * Math.sin(theta);
+      const y = centerY + L * 100 * Math.cos(theta);
+      
+      // Dibujar el punto de pivote
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = 'black';
+      ctx.fill();
+      
+      // Dibujar la cuerda
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Dibujar el peso
+      ctx.beginPath();
+      const radioMasa = 15 * Math.sqrt(m); // El radio depende de la masa
+      ctx.arc(x, y, radioMasa, 0, 2 * Math.PI);
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      // Dibujar información
+      ctx.fillStyle = 'black';
+      ctx.fillText(`Ángulo: ${(theta * 180 / Math.PI).toFixed(1)}°`, 10, 40);
+      ctx.fillText(`Velocidad angular: ${omega.toFixed(2)} rad/s`, 10, 60);
+      ctx.fillText(`Tiempo: ${t.toFixed(1)}s`, 10, 80);
+      
+      t += dt;
+      animationRef.current = requestAnimationFrame(simular);
+    };
+    
+    simular();
+  };
+
+  // Dibujar péndulo doble (estado inicial)
+  const dibujarPenduloDoble = () => {
+    const canvas = canvasDobleRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 4;
+    
+    // Convertir ángulo de grados a radianes
+    const angulo1Rad = parametros.angulo1Inicial * Math.PI / 180;
+    const angulo2Rad = parametros.angulo2Inicial * Math.PI / 180;
+    const longitud1 = parametros.longitud1 * 80; // Escalar para visualización
+    const longitud2 = parametros.longitud2 * 80;
+    
+    // Calcular posición de la primera masa
+    const x1 = centerX + longitud1 * Math.sin(angulo1Rad);
+    const y1 = centerY + longitud1 * Math.cos(angulo1Rad);
+    
+    // Calcular posición de la segunda masa
+    const x2 = x1 + longitud2 * Math.sin(angulo2Rad);
+    const y2 = y1 + longitud2 * Math.cos(angulo2Rad);
+    
+    // Limpiar el canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // Dibujar el punto de pivote
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = 'black';
+    ctx.fill();
+    
+    // Dibujar la primera cuerda
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(x1, y1);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Dibujar la primera masa
+    ctx.beginPath();
+    const radioMasa1 = 15 * Math.sqrt(parametros.masa1);
+    ctx.arc(x1, y1, radioMasa1, 0, 2 * Math.PI);
+    ctx.fillStyle = 'blue';
+    ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Dibujar la segunda cuerda
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Dibujar la segunda masa
+    ctx.beginPath();
+    const radioMasa2 = 15 * Math.sqrt(parametros.masa2);
+    ctx.arc(x2, y2, radioMasa2, 0, 2 * Math.PI);
+    ctx.fillStyle = 'red';
+    ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  };
+
+  // Función para simular y animar el péndulo doble
+  const animarPenduloDoble = () => {
+    if (animationDobleRef.current) {
+      cancelAnimationFrame(animationDobleRef.current);
+    }
+    
+    const canvas = canvasDobleRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 4;
+    
+    // Parámetros físicos
+    const L1 = parametros.longitud1;
+    const L2 = parametros.longitud2;
+    const m1 = parametros.masa1;
+    const m2 = parametros.masa2;
+    const g = parametros.gravedad;
+    
+    // Condiciones iniciales
+    let theta1 = parametros.angulo1Inicial * Math.PI / 180;
+    let theta2 = parametros.angulo2Inicial * Math.PI / 180;
+    let omega1 = parametros.velocidadAngular1Inicial;
+    let omega2 = parametros.velocidadAngular2Inicial;
+    let t = 0;
+    const dt = 0.016; // Aproximadamente 60 FPS
+    
+    // Traza de la trayectoria
+    const trayectoria = [];
+    
+    const simular = () => {
+      // Ecuaciones diferenciales del péndulo doble
+      // (Son ecuaciones complejas derivadas de la mecánica lagrangiana)
+      
+      // Calcular términos auxiliares
+      const delta = theta2 - theta1;
+      const den1 = (m1 + m2) * L1 - m2 * L1 * Math.cos(delta) * Math.cos(delta);
+      const den2 = (L2 / L1) * den1;
+      
+      // Calcular aceleraciones angulares
+      const alpha1 = (g * (Math.sin(theta2) * Math.cos(delta) - Math.sin(theta1)) / L1 - 
+                     (m2 * L2 * omega2 * omega2 * Math.sin(delta) + 
+                      m2 * g * Math.sin(theta2) * Math.cos(delta)) / 
+                     (m1 + m2) / L1 + 
+                     m2 * L1 * omega1 * omega1 * Math.sin(delta) * Math.cos(delta) / (m1 + m2) / L1) / 
+                     (1 - m2 * Math.cos(delta) * Math.cos(delta) / (m1 + m2));
+      
+      const alpha2 = (-L1 * omega1 * omega1 * Math.sin(delta) - 
+                      g * Math.sin(theta2) + 
+                      g * Math.sin(theta1) * Math.cos(delta)) / L2 + 
+                      (Math.cos(delta) * alpha1) / (L2 / L1);
+      
+      // Integración numérica (método de Euler)
+      omega1 += alpha1 * dt;
+      omega2 += alpha2 * dt;
+      theta1 += omega1 * dt;
+      theta2 += omega2 * dt;
+      
+      // Limpiar el canvas
+      ctx.clearRect(0, 0, width, height);
+      
+      // Calcular posiciones
+      const x1 = centerX + L1 * 80 * Math.sin(theta1);
+      const y1 = centerY + L1 * 80 * Math.cos(theta1);
+      const x2 = x1 + L2 * 80 * Math.sin(theta2);
+      const y2 = y1 + L2 * 80 * Math.cos(theta2);
+      
+      // Agregar punto a la trayectoria
+      trayectoria.push({ x: x2, y: y2 });
+      if (trayectoria.length > 100) {
+        trayectoria.shift(); // Limitar el tamaño de la trayectoria
+      }
+      
+      // Dibujar ecuación del péndulo doble
+      ctx.fillStyle = 'black';
+      ctx.font = '14px Arial';
+      ctx.fillText('Ecuaciones del péndulo doble (Lagrangiano):', 10, 20);
+      
+      // Dibujar trayectoria
+      if (trayectoria.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(trayectoria[0].x, trayectoria[0].y);
+        for (let i = 1; i < trayectoria.length; i++) {
+          ctx.lineTo(trayectoria[i].x, trayectoria[i].y);
+        }
+        ctx.strokeStyle = 'rgba(200, 0, 0, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      
+      // Dibujar el punto de pivote
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = 'black';
+      ctx.fill();
+      
+      // Dibujar la primera cuerda
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(x1, y1);
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Dibujar la primera masa
+      ctx.beginPath();
+      const radioMasa1 = 15 * Math.sqrt(m1);
+      ctx.arc(x1, y1, radioMasa1, 0, 2 * Math.PI);
+      ctx.fillStyle = 'blue';
+      ctx.fill();
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      // Dibujar la segunda cuerda
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Dibujar la segunda masa
+      ctx.beginPath();
+      const radioMasa2 = 15 * Math.sqrt(m2);
+      ctx.arc(x2, y2, radioMasa2, 0, 2 * Math.PI);
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      // Dibujar información
+      ctx.fillStyle = 'black';
+      ctx.fillText(`Ángulo 1: ${(theta1 * 180 / Math.PI).toFixed(1)}°`, 10, 40);
+      ctx.fillText(`Ángulo 2: ${(theta2 * 180 / Math.PI).toFixed(1)}°`, 10, 60);
+      ctx.fillText(`Tiempo: ${t.toFixed(1)}s`, 10, 80);
+      
+      t += dt;
+      animationDobleRef.current = requestAnimationFrame(simular);
+    };
+    
+    simular();
+  };
+
+  // Inicializar y limpiar animaciones
+  useEffect(() => {
+    if (tipoPendulo === 'simple') {
+      dibujarPenduloSimple();
+    } else {
+      dibujarPenduloDoble();
+    }
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      if (animationDobleRef.current) {
+        cancelAnimationFrame(animationDobleRef.current);
+      }
+    };
+  }, [tipoPendulo, parametros]);
+
+  return (
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        El Péndulo: Simulación y Ecuaciones
+      </Typography>
+      
+      <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel id="tipo-pendulo-label">Tipo de Péndulo</InputLabel>
+          <Select
+            labelId="tipo-pendulo-label"
+            id="tipo-pendulo"
+            value={tipoPendulo}
+            label="Tipo de Péndulo"
+            onChange={handleChangeTipo}
+          >
+            <MenuItem value="simple">Péndulo Simple</MenuItem>
+            <MenuItem value="doble">Péndulo Doble</MenuItem>
+          </Select>
+        </FormControl>
+        
+        {tipoPendulo === 'simple' && (
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ height: 400, width: '100%', position: 'relative' }}>
+                <canvas ref={canvasRef} width={500} height={400} style={{ border: '1px solid #ddd' }} />
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={animarPenduloSimple}
+                  sx={{ mr: 2 }}
+                >
+                  Animar
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="error" 
+                  onClick={() => {
+                    if (animationRef.current) {
+                      cancelAnimationFrame(animationRef.current);
+                      animationRef.current = null;
+                    }
+                    dibujarPenduloSimple();
+                  }}
+                >
+                  Detener
+                </Button>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle1">Parámetros del Péndulo Simple:</Typography>
+              <Box sx={{ mt: 2 }}>
+                <Typography gutterBottom>Longitud (m): {parametros.longitud}</Typography>
+                <Slider
+                  value={parametros.longitud}
+                  onChange={handleSliderChange('longitud')}
+                  min={0.1}
+                  max={3}
+                  step={0.1}
+                  valueLabelDisplay="auto"
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Typography gutterBottom>Masa (kg): {parametros.masa}</Typography>
+                <Slider
+                  value={parametros.masa}
+                  onChange={handleSliderChange('masa')}
+                  min={0.1}
+                  max={5}
+                  step={0.1}
+                  valueLabelDisplay="auto"
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Typography gutterBottom>Ángulo inicial (grados): {parametros.anguloInicial}</Typography>
+                <Slider
+                  value={parametros.anguloInicial}
+                  onChange={handleSliderChange('anguloInicial')}
+                  min={-90}
+                  max={90}
+                  step={1}
+                  valueLabelDisplay="auto"
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Typography gutterBottom>Amortiguamiento: {parametros.amortiguamiento}</Typography>
+                <Slider
+                  value={parametros.amortiguamiento}
+                  onChange={handleSliderChange('amortiguamiento')}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  valueLabelDisplay="auto"
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Typography gutterBottom>Gravedad (m/s²): {parametros.gravedad}</Typography>
+                <Slider
+                  value={parametros.gravedad}
+                  onChange={handleSliderChange('gravedad')}
+                  min={1}
+                  max={20}
+                  step={0.1}
+                  valueLabelDisplay="auto"
+                />
+              </Box>
+              <Typography variant="subtitle1" sx={{ mt: 3 }}>Ecuación del Péndulo Simple:</Typography>
+              <BlockMath math={`\\frac{d^2\\theta}{dt^2} + \\frac{g}{L}\\sin(\\theta) = 0`} />
+              <Typography variant="body2">
+                Donde:
+                <ul>
+                  <li><InlineMath math={`\\theta`} />: ángulo del péndulo</li>
+                  <li><InlineMath math={`b`} />: coeficiente de amortiguamiento</li>
+                  <li><InlineMath math={`m`} />: masa</li>
+                  <li><InlineMath math={`g`} />: aceleración de la gravedad</li>
+                  <li><InlineMath math={`L`} />: longitud</li>
+                </ul>
+              </Typography>
+            </Grid>
+          </Grid>
+        )}
+        
+        {tipoPendulo === 'doble' && (
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ height: 400, width: '100%', position: 'relative' }}>
+                <canvas ref={canvasDobleRef} width={500} height={400} style={{ border: '1px solid #ddd' }} />
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={animarPenduloDoble}
+                  sx={{ mr: 2 }}
+                >
+                  Animar
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="error" 
+                  onClick={() => {
+                    if (animationDobleRef.current) {
+                      cancelAnimationFrame(animationDobleRef.current);
+                      animationDobleRef.current = null;
+                    }
+                    dibujarPenduloDoble();
+                  }}
+                >
+                  Detener
+                </Button>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle1">Parámetros del Péndulo Doble:</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography gutterBottom>Longitud 1 (m): {parametros.longitud1}</Typography>
+                    <Slider
+                      value={parametros.longitud1}
+                      onChange={handleSliderChange('longitud1')}
+                      min={0.1}
+                      max={3}
+                      step={0.1}
+                      valueLabelDisplay="auto"
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography gutterBottom>Longitud 2 (m): {parametros.longitud2}</Typography>
+                    <Slider
+                      value={parametros.longitud2}
+                      onChange={handleSliderChange('longitud2')}
+                      min={0.1}
+                      max={3}
+                      step={0.1}
+                      valueLabelDisplay="auto"
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography gutterBottom>Masa 1 (kg): {parametros.masa1}</Typography>
+                    <Slider
+                      value={parametros.masa1}
+                      onChange={handleSliderChange('masa1')}
+                      min={0.1}
+                      max={5}
+                      step={0.1}
+                      valueLabelDisplay="auto"
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography gutterBottom>Masa 2 (kg): {parametros.masa2}</Typography>
+                    <Slider
+                      value={parametros.masa2}
+                      onChange={handleSliderChange('masa2')}
+                      min={0.1}
+                      max={5}
+                      step={0.1}
+                      valueLabelDisplay="auto"
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography gutterBottom>Ángulo 1 inicial (°): {parametros.angulo1Inicial}</Typography>
+                    <Slider
+                      value={parametros.angulo1Inicial}
+                      onChange={handleSliderChange('angulo1Inicial')}
+                      min={-90}
+                      max={90}
+                      step={1}
+                      valueLabelDisplay="auto"
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography gutterBottom>Ángulo 2 inicial (°): {parametros.angulo2Inicial}</Typography>
+                    <Slider
+                      value={parametros.angulo2Inicial}
+                      onChange={handleSliderChange('angulo2Inicial')}
+                      min={-90}
+                      max={90}
+                      step={1}
+                      valueLabelDisplay="auto"
+                    />
+                  </Box>
+                </Grid>
+              </Grid>
+              <Typography variant="subtitle1" sx={{ mt: 3 }}>Ecuaciones del Péndulo Doble:</Typography>
+              <Typography variant="body2">
+                Las ecuaciones del péndulo doble son un sistema de ecuaciones diferenciales no lineales acopladas 
+                derivadas del Lagrangiano del sistema:
+              </Typography>
+              <BlockMath math={`\\frac{d^2\\theta_1}{dt^2} = f_1(\\theta_1, \\theta_2, \\omega_1, \\omega_2)`} />
+              <BlockMath math={`\\frac{d^2\\theta_2}{dt^2} = f_2(\\theta_1, \\theta_2, \\omega_1, \\omega_2)`} />
+              <Typography variant="body2" sx={{ mt: 2 }}>
+                Este sistema es famoso por exhibir comportamiento caótico, lo que significa que pequeñas 
+                diferencias en las condiciones iniciales pueden llevar a evoluciones temporales completamente 
+                diferentes. Por esta razón, el péndulo doble es un ejemplo clásico de sistema caótico 
+                en mecánica clásica.
+              </Typography>
+            </Grid>
+          </Grid>
+        )}
+      </Paper>
+      
+      <Paper elevation={3} sx={{ p: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Conceptos Teóricos
+        </Typography>
+        <Typography variant="subtitle1">Péndulo Simple:</Typography>
+        <Typography paragraph>
+          Un péndulo simple consiste en una masa puntual suspendida de un hilo inextensible y sin masa. 
+          La ecuación que describe su movimiento es:
+        </Typography>
+        <BlockMath math={`\\frac{d^2\\theta}{dt^2} + \\frac{g}{L}\\sin(\\theta) = 0`} />
+        <Typography paragraph>
+          Para ángulos pequeños, podemos aproximar <InlineMath math={`\\sin(\\theta) \\approx \\theta`} />, 
+          lo que lleva a la ecuación del oscilador armónico:
+        </Typography>
+        <BlockMath math={`\\frac{d^2\\theta}{dt^2} + \\frac{g}{L}\\theta = 0`} />
+        <Typography paragraph>
+          La solución a esta ecuación es un movimiento armónico simple con período:
+        </Typography>
+        <BlockMath math={`T = 2\\pi\\sqrt{\\frac{L}{g}}`} />
+        
+        <Divider sx={{ my: 2 }} />
+        
+        <Typography variant="subtitle1">Péndulo Doble:</Typography>
+        <Typography paragraph>
+          Un péndulo doble consiste en dos péndulos simples conectados en serie. Su comportamiento es notablemente 
+          más complejo que el del péndulo simple, exhibiendo dinámicas caóticas para ciertos valores de 
+          energía y condiciones iniciales.
+        </Typography>
+        <Typography paragraph>
+          Las ecuaciones de movimiento para el péndulo doble se derivan del Lagrangiano del sistema, 
+          que tiene en cuenta la energía cinética y potencial de ambas masas. Estas ecuaciones son:
+        </Typography>
+        <BlockMath math={`(m_1 + m_2)L_1\\frac{d^2\\theta_1}{dt^2} + m_2L_2\\frac{d^2\\theta_2}{dt^2}\\cos(\\theta_1 - \\theta_2) + m_2L_2\\left(\\frac{d\\theta_2}{dt}\\right)^2\\sin(\\theta_1 - \\theta_2) + (m_1 + m_2)g\\sin\\theta_1 = 0`} />
+        <BlockMath math={`m_2L_2\\frac{d^2\\theta_2}{dt^2} + m_2L_1\\frac{d^2\\theta_1}{dt^2}\\cos(\\theta_1 - \\theta_2) - m_2L_1\\left(\\frac{d\\theta_1}{dt}\\right)^2\\sin(\\theta_1 - \\theta_2) + m_2g\\sin\\theta_2 = 0`} />
+        <Typography paragraph>
+          Estas ecuaciones son no lineales y acopladas, lo que hace que su solución analítica sea 
+          imposible en el caso general. Por ello, se resuelven numéricamente como se muestra en la simulación.
+        </Typography>
+      </Paper>
+    </Box>
+  );
+};
+
 // Componente principal que integra todas las subsecciones
 function CalculoUnaDimension() {
   const [subseccion, setSubseccion] = useState(0);
@@ -893,6 +1607,7 @@ function CalculoUnaDimension() {
         <Tabs value={subseccion} onChange={handleChangeSubseccion} aria-label="subsecciones de cálculo en una dimensión">
           <Tab label="Razones de Cambio y Derivadas en Física" />
           <Tab label="Optimización aplicada a la Física" />
+          <Tab label="El Péndulo" />
           {/* Espacio para futuras subsecciones
           <Tab label="Integrales Básicas" /> 
           */}
@@ -901,8 +1616,9 @@ function CalculoUnaDimension() {
 
       {subseccion === 0 && <RazonesDeCambio />}
       {subseccion === 1 && <OptimizacionFisica />}
+      {subseccion === 2 && <Pendulo />}
       {/* Espacio para futuras subsecciones
-      {subseccion === 2 && <IntegralesBasicas />}
+      {subseccion === 3 && <IntegralesBasicas />}
       */}
     </Box>
   );

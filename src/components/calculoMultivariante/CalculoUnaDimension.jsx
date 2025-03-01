@@ -1835,9 +1835,9 @@ const Resorte = () => {
     masaObjeto: 1,
     constanteResorte: 10,
     amortiguamiento: 0.1,
-    amplitudInicial: 2,
-    velocidadInicial: 0,
-    posicionEquilibrio: 5,
+    amplitudInicial: 3,  // Valor inicial diferente de cero para que sea visible
+    velocidadInicial: 0, // Velocidad inicial en m/s
+    posicionEquilibrio: 200,
     mostrarGraficas: true
   });
   
@@ -1881,41 +1881,64 @@ const Resorte = () => {
     ctx.clearRect(0, 0, width, height);
     
     // Parámetros de visualización
-    const anchoResorte = width * 0.8;
     const posEquilibrio = parametros.posicionEquilibrio;
     const desplazamiento = parametros.amplitudInicial;
     const posicionActual = posEquilibrio + desplazamiento;
     
-    // Dibujar pared izquierda
-    ctx.fillStyle = '#555555';
-    ctx.fillRect(10, height/4 - 50, 20, 100);
+    // Dibujar eje X
+    ctx.beginPath();
+    ctx.moveTo(0, height/2);
+    ctx.lineTo(width, height/2);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
     
-    // Dibujar resorte
-    dibujarResorte(ctx, 30, height/4, posicionActual, height/4, 20);
+    // Dibujar marcas en el eje X
+    for (let x = 0; x <= width; x += 50) {
+      ctx.beginPath();
+      ctx.moveTo(x, height/2 - 5);
+      ctx.lineTo(x, height/2 + 5);
+      ctx.stroke();
+      ctx.fillStyle = '#000000';
+      ctx.font = '12px Arial';
+      ctx.fillText(`${(x-posEquilibrio)/50}`, x, height/2 + 20);
+    }
+    
+    // Dibujar origen (0)
+    ctx.fillStyle = '#000000';
+    ctx.font = '16px Arial';
+    ctx.fillText('0', posEquilibrio, height/2 + 25);
+    ctx.beginPath();
+    ctx.arc(posEquilibrio, height/2, 3, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Pared izquierda
+    const paredX = 50;
+    ctx.fillStyle = '#555555';
+    ctx.fillRect(paredX, height/2 - 40, 20, 80);
+    
+    // Dibujar resorte no extendido
+    dibujarResorte(ctx, paredX + 20, height/2, posEquilibrio - 30, height/2, 15);
     
     // Dibujar masa
     ctx.beginPath();
-    ctx.arc(posicionActual, height/4, 20 * Math.sqrt(parametros.masaObjeto), 0, 2 * Math.PI);
+    ctx.rect(posEquilibrio - 30, height/2 - 25, 30, 50);
     ctx.fillStyle = '#2196F3';
     ctx.fill();
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 2;
     ctx.stroke();
     
-    // Dibujar línea de equilibrio
-    ctx.beginPath();
-    ctx.moveTo(posEquilibrio, height/4 - 80);
-    ctx.lineTo(posEquilibrio, height/4 + 80);
-    ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Añadir texto "m" encima de la masa
+    ctx.fillStyle = '#000000';
+    ctx.font = '18px Arial';
+    ctx.fillText('m', posEquilibrio - 20, height/2 - 30);
     
     // Información inicial
     ctx.fillStyle = '#000000';
     ctx.font = '14px Arial';
-    ctx.fillText(`Posición de equilibrio: ${posEquilibrio} m`, 20, 30);
-    ctx.fillText(`Desplazamiento inicial: ${desplazamiento} m`, 20, 50);
-    ctx.fillText(`k = ${parametros.constanteResorte} N/m, m = ${parametros.masaObjeto} kg, c = ${parametros.amortiguamiento} Ns/m`, 20, 70);
+    ctx.fillText(`resorte no extendido`, 70, height/2 - 50);
+    ctx.fillText(`k = ${parametros.constanteResorte} N/m, m = ${parametros.masaObjeto} kg`, 20, 30);
   };
   
   // Función auxiliar para dibujar un resorte entre dos puntos
@@ -1923,29 +1946,48 @@ const Resorte = () => {
     const dx = x2 - x1;
     const dy = y2 - y1;
     const len = Math.sqrt(dx * dx + dy * dy);
-    const ang = Math.atan2(dy, dx);
     
-    const segmentos = vueltas * 2;
-    const segmentoLongitud = len / segmentos;
-    
+    // Dibujar línea recta para el resorte
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     
-    for (let i = 0; i < segmentos; i++) {
-      const x = x1 + dx * (i / segmentos);
-      const y = y1 + dy * (i / segmentos);
-      const desplazamiento = (i % 2 === 0) ? 10 : -10;
+    // Dibujar espiras del resorte
+    const espiras = vueltas;
+    const espiraAncho = len / espiras;
+    const espiraAlto = 15;
+    
+    let x = x1;
+    ctx.moveTo(x, y1);
+    
+    // Primera línea recta
+    const lineaInicial = espiraAncho * 0.1;
+    ctx.lineTo(x + lineaInicial, y1);
+    x += lineaInicial;
+    
+    // Dibujar cada espira
+    for (let i = 0; i < espiras; i++) {
+      // Primera mitad de la espira (hacia arriba)
+      ctx.bezierCurveTo(
+        x + espiraAncho * 0.2, y1 - espiraAlto,
+        x + espiraAncho * 0.3, y1 - espiraAlto,
+        x + espiraAncho * 0.5, y1
+      );
       
-      // Omitir las ondulaciones en los extremos
-      if (i === 0 || i === segmentos - 1) {
-        ctx.lineTo(x + dx / segmentos, y + dy / segmentos);
-      } else {
-        ctx.lineTo(x + dx / segmentos, y + dy / segmentos + desplazamiento);
-      }
+      // Segunda mitad de la espira (hacia abajo)
+      ctx.bezierCurveTo(
+        x + espiraAncho * 0.7, y1 + espiraAlto,
+        x + espiraAncho * 0.8, y1 + espiraAlto,
+        x + espiraAncho, y1
+      );
+      
+      x += espiraAncho;
     }
     
+    // Línea final recta
+    ctx.lineTo(x2, y2);
+    
     ctx.strokeStyle = '#FF5722';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.stroke();
   };
   
@@ -2019,6 +2061,8 @@ const Resorte = () => {
       animationRef.current = requestAnimationFrame(simular);
     };
     
+    // Iniciar la simulación
+    dibujarEstadoActual(); // Dibujar estado inicial inmediatamente
     simular();
   };
   
@@ -2035,24 +2079,26 @@ const Resorte = () => {
   const dibujarEstadoActual = () => {
     const canvas = canvasRef.current;
     const grafica = graficaRef.current;
-    if (!canvas || !grafica) return;
+    if (!canvas) return;
     
     const ctxCanvas = canvas.getContext('2d');
-    const ctxGrafica = grafica.getContext('2d');
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
-    const graficaWidth = grafica.width;
-    const graficaHeight = grafica.height;
     
     // Limpiar canvas
     ctxCanvas.clearRect(0, 0, canvasWidth, canvasHeight);
-    ctxGrafica.clearRect(0, 0, graficaWidth, graficaHeight);
     
     // Parámetros de simulación
     const posEquilibrio = parametros.posicionEquilibrio;
-    const x = datosSimulacion.current.posiciones[datosSimulacion.current.posiciones.length - 1];
-    const v = datosSimulacion.current.velocidades[datosSimulacion.current.velocidades.length - 1];
-    const a = datosSimulacion.current.aceleraciones[datosSimulacion.current.aceleraciones.length - 1];
+    const x = datosSimulacion.current.posiciones.length > 0 
+      ? datosSimulacion.current.posiciones[datosSimulacion.current.posiciones.length - 1] 
+      : parametros.amplitudInicial;
+    const v = datosSimulacion.current.velocidades.length > 0 
+      ? datosSimulacion.current.velocidades[datosSimulacion.current.velocidades.length - 1] 
+      : parametros.velocidadInicial;
+    const a = datosSimulacion.current.aceleraciones.length > 0 
+      ? datosSimulacion.current.aceleraciones[datosSimulacion.current.aceleraciones.length - 1] 
+      : -(parametros.constanteResorte/parametros.masaObjeto) * parametros.amplitudInicial;
     const t = datosSimulacion.current.tiempo;
     
     // Dibujar texto con valores actuales
@@ -2063,34 +2109,57 @@ const Resorte = () => {
     ctxCanvas.fillText(`Velocidad: ${v.toFixed(2)} m/s`, 20, 70);
     ctxCanvas.fillText(`Aceleración: ${a.toFixed(2)} m/s²`, 20, 90);
     
-    // Ecuaciones de movimiento
-    ctxCanvas.fillText("Ecuación diferencial: m·a + c·v + k·x = 0", canvasWidth - 300, 30);
-    ctxCanvas.fillText(`x(t) = Ae^(-ct/2m)·cos(ωt + φ)`, canvasWidth - 300, 50);
-    
-    // Dibujar pared izquierda
-    ctxCanvas.fillStyle = '#555555';
-    ctxCanvas.fillRect(10, canvasHeight/4 - 50, 20, 100);
-    
-    // Dibujar línea de equilibrio
+    // Dibujar eje X
     ctxCanvas.beginPath();
-    ctxCanvas.moveTo(posEquilibrio, canvasHeight/4 - 80);
-    ctxCanvas.lineTo(posEquilibrio, canvasHeight/4 + 80);
-    ctxCanvas.strokeStyle = 'rgba(0, 255, 0, 0.5)';
-    ctxCanvas.lineWidth = 2;
+    ctxCanvas.moveTo(0, canvasHeight/2);
+    ctxCanvas.lineTo(canvasWidth, canvasHeight/2);
+    ctxCanvas.strokeStyle = '#000000';
+    ctxCanvas.lineWidth = 1;
     ctxCanvas.stroke();
     
-    // Dibujar resorte
-    const posicionActual = posEquilibrio + x;
-    dibujarResorte(ctxCanvas, 30, canvasHeight/4, posicionActual, canvasHeight/4, 20);
+    // Dibujar marcas en el eje X
+    for (let xi = 0; xi <= canvasWidth; xi += 50) {
+      ctxCanvas.beginPath();
+      ctxCanvas.moveTo(xi, canvasHeight/2 - 5);
+      ctxCanvas.lineTo(xi, canvasHeight/2 + 5);
+      ctxCanvas.stroke();
+      ctxCanvas.fillStyle = '#000000';
+      ctxCanvas.font = '12px Arial';
+      ctxCanvas.fillText(`${(xi-posEquilibrio)/50}`, xi, canvasHeight/2 + 20);
+    }
     
-    // Dibujar masa
+    // Dibujar origen (0)
+    ctxCanvas.fillStyle = '#000000';
+    ctxCanvas.font = '16px Arial';
+    ctxCanvas.fillText('0', posEquilibrio, canvasHeight/2 + 25);
     ctxCanvas.beginPath();
-    ctxCanvas.arc(posicionActual, canvasHeight/4, 20 * Math.sqrt(parametros.masaObjeto), 0, 2 * Math.PI);
+    ctxCanvas.arc(posEquilibrio, canvasHeight/2, 3, 0, 2 * Math.PI);
+    ctxCanvas.fill();
+    
+    // Pared izquierda
+    const paredX = 50;
+    ctxCanvas.fillStyle = '#555555';
+    ctxCanvas.fillRect(paredX, canvasHeight/2 - 40, 20, 80);
+    
+    // Calcular posición actual del bloque
+    const posicionActual = posEquilibrio + x;
+    
+    // Dibujar resorte
+    dibujarResorte(ctxCanvas, paredX + 20, canvasHeight/2, posicionActual - 30, canvasHeight/2, 15);
+    
+    // Dibujar masa como bloque rectangular
+    ctxCanvas.beginPath();
+    ctxCanvas.rect(posicionActual - 30, canvasHeight/2 - 25, 30, 50);
     ctxCanvas.fillStyle = '#2196F3';
     ctxCanvas.fill();
     ctxCanvas.strokeStyle = '#000000';
     ctxCanvas.lineWidth = 2;
     ctxCanvas.stroke();
+    
+    // Añadir texto "m" encima del bloque
+    ctxCanvas.fillStyle = '#000000';
+    ctxCanvas.font = '18px Arial';
+    ctxCanvas.fillText('m', posicionActual - 20, canvasHeight/2 - 30);
     
     // Vectores de velocidad y aceleración
     const escalaVector = 20;
@@ -2098,8 +2167,8 @@ const Resorte = () => {
     // Vector de velocidad
     if (Math.abs(v) > 0.1) {
       ctxCanvas.beginPath();
-      ctxCanvas.moveTo(posicionActual, canvasHeight/4);
-      ctxCanvas.lineTo(posicionActual + v * escalaVector, canvasHeight/4);
+      ctxCanvas.moveTo(posicionActual - 15, canvasHeight/2 - 35);
+      ctxCanvas.lineTo(posicionActual - 15 + v * escalaVector, canvasHeight/2 - 35);
       ctxCanvas.strokeStyle = '#00FF00';
       ctxCanvas.lineWidth = 2;
       ctxCanvas.stroke();
@@ -2107,9 +2176,9 @@ const Resorte = () => {
       // Flecha de velocidad
       const angV = v > 0 ? 0 : Math.PI;
       ctxCanvas.beginPath();
-      ctxCanvas.moveTo(posicionActual + v * escalaVector, canvasHeight/4);
-      ctxCanvas.lineTo(posicionActual + v * escalaVector - 10 * Math.cos(angV - Math.PI/6), canvasHeight/4 - 10 * Math.sin(angV - Math.PI/6));
-      ctxCanvas.lineTo(posicionActual + v * escalaVector - 10 * Math.cos(angV + Math.PI/6), canvasHeight/4 - 10 * Math.sin(angV + Math.PI/6));
+      ctxCanvas.moveTo(posicionActual - 15 + v * escalaVector, canvasHeight/2 - 35);
+      ctxCanvas.lineTo(posicionActual - 15 + v * escalaVector - 10 * Math.cos(angV - Math.PI/6), canvasHeight/2 - 35 - 10 * Math.sin(angV - Math.PI/6));
+      ctxCanvas.lineTo(posicionActual - 15 + v * escalaVector - 10 * Math.cos(angV + Math.PI/6), canvasHeight/2 - 35 - 10 * Math.sin(angV + Math.PI/6));
       ctxCanvas.closePath();
       ctxCanvas.fillStyle = '#00FF00';
       ctxCanvas.fill();
@@ -2118,8 +2187,8 @@ const Resorte = () => {
     // Vector de aceleración
     if (Math.abs(a) > 0.1) {
       ctxCanvas.beginPath();
-      ctxCanvas.moveTo(posicionActual, canvasHeight/4);
-      ctxCanvas.lineTo(posicionActual + a * escalaVector, canvasHeight/4);
+      ctxCanvas.moveTo(posicionActual - 15, canvasHeight/2 - 45);
+      ctxCanvas.lineTo(posicionActual - 15 + a * escalaVector, canvasHeight/2 - 45);
       ctxCanvas.strokeStyle = '#FF0000';
       ctxCanvas.lineWidth = 2;
       ctxCanvas.stroke();
@@ -2127,16 +2196,23 @@ const Resorte = () => {
       // Flecha de aceleración
       const angA = a > 0 ? 0 : Math.PI;
       ctxCanvas.beginPath();
-      ctxCanvas.moveTo(posicionActual + a * escalaVector, canvasHeight/4);
-      ctxCanvas.lineTo(posicionActual + a * escalaVector - 10 * Math.cos(angA - Math.PI/6), canvasHeight/4 - 10 * Math.sin(angA - Math.PI/6));
-      ctxCanvas.lineTo(posicionActual + a * escalaVector - 10 * Math.cos(angA + Math.PI/6), canvasHeight/4 - 10 * Math.sin(angA + Math.PI/6));
+      ctxCanvas.moveTo(posicionActual - 15 + a * escalaVector, canvasHeight/2 - 45);
+      ctxCanvas.lineTo(posicionActual - 15 + a * escalaVector - 10 * Math.cos(angA - Math.PI/6), canvasHeight/2 - 45 - 10 * Math.sin(angA - Math.PI/6));
+      ctxCanvas.lineTo(posicionActual - 15 + a * escalaVector - 10 * Math.cos(angA + Math.PI/6), canvasHeight/2 - 45 - 10 * Math.sin(angA + Math.PI/6));
       ctxCanvas.closePath();
       ctxCanvas.fillStyle = '#FF0000';
       ctxCanvas.fill();
     }
     
     // Dibujar gráficas si están habilitadas
-    if (parametros.mostrarGraficas) {
+    if (parametros.mostrarGraficas && grafica) {
+      const ctxGrafica = grafica.getContext('2d');
+      const graficaWidth = grafica.width;
+      const graficaHeight = grafica.height;
+      
+      // Limpiar el canvas de la gráfica
+      ctxGrafica.clearRect(0, 0, graficaWidth, graficaHeight);
+      
       // Configuración de la gráfica
       const margenIzq = 50;
       const margenDer = 30;
@@ -2257,15 +2333,24 @@ const Resorte = () => {
     }
   };
   
-  // Inicializar visualización cuando cambia algún parámetro
+  // Inicializar visualización y efecto de limpieza
   useEffect(() => {
     dibujarResorteInicial();
+    
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
   }, [parametros]);
+
+  // Asegurar que el canvas esté disponible
+  useEffect(() => {
+    if (canvasRef.current && graficaRef.current) {
+      dibujarResorteInicial();
+    }
+  }, [canvasRef.current, graficaRef.current]);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -2274,6 +2359,19 @@ const Resorte = () => {
       </Typography>
       
       <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
+        <Typography variant="body1" paragraph>
+          Esta simulación muestra un sistema masa-resorte horizontal, donde un bloque de masa m está conectado 
+          a un resorte con constante elástica k. El resorte está fijo en su extremo izquierdo, y el bloque puede
+          moverse libremente a lo largo del eje horizontal (eje x).
+        </Typography>
+        
+        <Typography variant="body1" paragraph>
+          El origen del sistema (x = 0) se encuentra en la posición de equilibrio del resorte, 
+          donde no está ni comprimido ni estirado. Cuando el bloque se desplaza de esta posición, 
+          el resorte ejerce una fuerza restauradora proporcional al desplazamiento y en sentido contrario,
+          siguiendo la ley de Hooke: F = -kx.
+        </Typography>
+        
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
             <Box sx={{ height: 400, width: '100%', position: 'relative' }}>
@@ -2300,7 +2398,7 @@ const Resorte = () => {
           <Grid item xs={12} md={6}>
             <Typography variant="subtitle1">Parámetros del Resorte:</Typography>
             <Box sx={{ mt: 2 }}>
-              <Typography gutterBottom>Constante del resorte (N/m): {parametros.constanteResorte}</Typography>
+              <Typography gutterBottom>Constante del resorte (k) en N/m: {parametros.constanteResorte}</Typography>
               <Slider
                 value={parametros.constanteResorte}
                 onChange={handleSliderChange('constanteResorte')}
@@ -2311,7 +2409,7 @@ const Resorte = () => {
               />
             </Box>
             <Box sx={{ mt: 2 }}>
-              <Typography gutterBottom>Masa (kg): {parametros.masaObjeto}</Typography>
+              <Typography gutterBottom>Masa (m) en kg: {parametros.masaObjeto}</Typography>
               <Slider
                 value={parametros.masaObjeto}
                 onChange={handleSliderChange('masaObjeto')}
@@ -2322,7 +2420,7 @@ const Resorte = () => {
               />
             </Box>
             <Box sx={{ mt: 2 }}>
-              <Typography gutterBottom>Amortiguamiento (Ns/m): {parametros.amortiguamiento}</Typography>
+              <Typography gutterBottom>Amortiguamiento (c) en Ns/m: {parametros.amortiguamiento}</Typography>
               <Slider
                 value={parametros.amortiguamiento}
                 onChange={handleSliderChange('amortiguamiento')}
@@ -2333,7 +2431,7 @@ const Resorte = () => {
               />
             </Box>
             <Box sx={{ mt: 2 }}>
-              <Typography gutterBottom>Amplitud inicial (m): {parametros.amplitudInicial}</Typography>
+              <Typography gutterBottom>Desplazamiento inicial en m: {parametros.amplitudInicial}</Typography>
               <Slider
                 value={parametros.amplitudInicial}
                 onChange={handleSliderChange('amplitudInicial')}
@@ -2344,12 +2442,23 @@ const Resorte = () => {
               />
             </Box>
             <Box sx={{ mt: 2 }}>
-              <Typography gutterBottom>Posición de equilibrio (m): {parametros.posicionEquilibrio}</Typography>
+              <Typography gutterBottom>Velocidad inicial en m/s: {parametros.velocidadInicial}</Typography>
+              <Slider
+                value={parametros.velocidadInicial}
+                onChange={handleSliderChange('velocidadInicial')}
+                min={-10}
+                max={10}
+                step={0.5}
+                valueLabelDisplay="auto"
+              />
+            </Box>
+            <Box sx={{ mt: 2 }}>
+              <Typography gutterBottom>Posición del origen (0) en px: {parametros.posicionEquilibrio}</Typography>
               <Slider
                 value={parametros.posicionEquilibrio}
                 onChange={handleSliderChange('posicionEquilibrio')}
-                min={100}
-                max={300}
+                min={150}
+                max={350}
                 step={10}
                 valueLabelDisplay="auto"
               />
@@ -2406,7 +2515,7 @@ const Resorte = () => {
           </ul>
         </Typography>
         
-        <Typography variant="subtitle1">Solución para el caso subamortiguado (c² < 4mk):</Typography>
+        <Typography variant="subtitle1">Solución para el caso subamortiguado (c^2 &lt; 4mk):</Typography>
         <BlockMath math={`x(t) = Ae^{-\\frac{c}{2m}t}\\cos(\\omega' t + \\phi)`} />
         <Typography variant="body1" paragraph>
           Donde:

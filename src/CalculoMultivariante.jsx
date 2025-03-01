@@ -4,6 +4,8 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 // Importar el componente EspacioTridimensional desde su ubicación correcta
 import EspacioTridimensional from './components/calculoMultivariante/EspacioTridimensional';
+// Importar el nuevo componente para Cálculo en una dimensión
+import CalculoUnaDimension from './components/calculoMultivariante/CalculoUnaDimension';
 
 // Componentes temporales para cada sección
 function FuncionesVectoriales() {
@@ -60,6 +62,7 @@ function CalculoMultivariante() {
   const [value, setValue] = React.useState(0);
   
   const paths = [
+    '/calculo-multivariante/calculo-1d',
     '/calculo-multivariante/espacio-3d',
     '/calculo-multivariante/funciones-vectoriales',
     '/calculo-multivariante/derivadas-parciales',
@@ -89,6 +92,7 @@ function CalculoMultivariante() {
       
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={value} onChange={handleChange} aria-label="temas de cálculo multivariante">
+          <Tab label="Cálculo en 1D" />
           <Tab label="Espacio 3D" />
           <Tab label="Funciones Vectoriales" />
           <Tab label="Derivadas Parciales" />
@@ -98,6 +102,7 @@ function CalculoMultivariante() {
       </Box>
 
       <Routes>
+        <Route path="/calculo-1d" element={<CalculoUnaDimension />} />
         <Route path="/espacio-3d" element={<EspacioTridimensional />} />
         <Route path="/funciones-vectoriales" element={<FuncionesVectoriales />} />
         <Route path="/derivadas-parciales" element={<DerivadasParciales />} />

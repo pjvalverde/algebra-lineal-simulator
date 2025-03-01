@@ -469,6 +469,8 @@ const OptimizacionFisica = () => {
     altura: 0
   });
   const [resultado, setResultado] = useState(null);
+  const canvasProyectilRef = useRef(null);
+  const animationProyectilRef = useRef(null);
 
   const handleChangeTipo = (event) => {
     setTipoProblema(event.target.value);
@@ -615,6 +617,169 @@ const OptimizacionFisica = () => {
     };
   };
 
+  // Función para dibujar la simulación inicial del proyectil
+  const dibujarProyectil = () => {
+    const canvas = canvasProyectilRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Limpiar el canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // Dibujar el suelo
+    ctx.beginPath();
+    ctx.moveTo(0, height - 50);
+    ctx.lineTo(width, height - 50);
+    ctx.strokeStyle = '#009900';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Dibujar punto de lanzamiento
+    const yInicial = height - 50 - parametros.altura * 5; // Escalar altura para visualización
+    ctx.beginPath();
+    ctx.arc(50, yInicial, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = 'red';
+    ctx.fill();
+    
+    // Dibujar vector de dirección inicial
+    const anguloRad = parametros.angulo * Math.PI / 180;
+    const vectorLongitud = 30; // Longitud fija para el vector
+    const vectorX = 50 + vectorLongitud * Math.cos(anguloRad);
+    const vectorY = yInicial - vectorLongitud * Math.sin(anguloRad);
+    
+    ctx.beginPath();
+    ctx.moveTo(50, yInicial);
+    ctx.lineTo(vectorX, vectorY);
+    ctx.strokeStyle = 'blue';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Dibujar punta de flecha
+    ctx.beginPath();
+    ctx.moveTo(vectorX, vectorY);
+    ctx.lineTo(vectorX - 10 * Math.cos(anguloRad - Math.PI/6), vectorY + 10 * Math.sin(anguloRad - Math.PI/6));
+    ctx.lineTo(vectorX - 10 * Math.cos(anguloRad + Math.PI/6), vectorY + 10 * Math.sin(anguloRad + Math.PI/6));
+    ctx.closePath();
+    ctx.fillStyle = 'blue';
+    ctx.fill();
+    
+    // Indicar valores
+    ctx.fillStyle = 'black';
+    ctx.font = '12px Arial';
+    ctx.fillText(`v₀ = ${parametros.velocidadInicial} m/s`, 10, 20);
+    ctx.fillText(`θ = ${parametros.angulo}°`, 10, 40);
+    ctx.fillText(`h₀ = ${parametros.altura} m`, 10, 60);
+  };
+
+  // Función para animar el movimiento del proyectil
+  const animarProyectil = () => {
+    if (animationProyectilRef.current) {
+      cancelAnimationFrame(animationProyectilRef.current);
+    }
+    
+    const canvas = canvasProyectilRef.current;
+    if (!canvas || !resultado) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Parámetros físicos
+    const v0 = resultado.parametros.v0;
+    const anguloRad = resultado.parametros.angulo * Math.PI / 180;
+    const h0 = resultado.parametros.h0;
+    const g = 9.8;
+    
+    // Escala para la visualización
+    // Ajustar la escala según el alcance y la altura máxima
+    const escalaX = (width - 100) / resultado.alcance;
+    const escalaY = (height - 100) / Math.max(resultado.alturaMaxima, h0 + 5);
+    
+    // Posición inicial
+    const xInicial = 50;
+    const yInicial = height - 50 - h0 * escalaY;
+    
+    let t = 0;
+    const dt = 0.05; // Paso de tiempo para la animación
+    const tMax = resultado.tiempoVuelo * 1.2; // Tiempo máximo con un margen
+    
+    // Arreglo para almacenar la trayectoria
+    const trayectoria = [];
+    
+    const animar = () => {
+      // Limpiar el canvas
+      ctx.clearRect(0, 0, width, height);
+      
+      // Dibujar el suelo
+      ctx.beginPath();
+      ctx.moveTo(0, height - 50);
+      ctx.lineTo(width, height - 50);
+      ctx.strokeStyle = '#009900';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Calcular posición actual
+      const x = xInicial + v0 * Math.cos(anguloRad) * t * escalaX;
+      const y = yInicial - (h0 + v0 * Math.sin(anguloRad) * t - 0.5 * g * t * t) * escalaY;
+      
+      // Agregar punto a la trayectoria
+      trayectoria.push({ x, y });
+      
+      // Dibujar trayectoria
+      ctx.beginPath();
+      ctx.moveTo(trayectoria[0].x, trayectoria[0].y);
+      for (let i = 1; i < trayectoria.length; i++) {
+        ctx.lineTo(trayectoria[i].x, trayectoria[i].y);
+      }
+      ctx.strokeStyle = 'rgba(200, 0, 0, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      
+      // Dibujar proyectil
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, 2 * Math.PI);
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      // Mostrar información en tiempo real
+      ctx.fillStyle = 'black';
+      ctx.font = '12px Arial';
+      ctx.fillText(`Tiempo: ${t.toFixed(2)} s`, 10, 20);
+      ctx.fillText(`Posición X: ${(v0 * Math.cos(anguloRad) * t).toFixed(2)} m`, 10, 40);
+      ctx.fillText(`Posición Y: ${(h0 + v0 * Math.sin(anguloRad) * t - 0.5 * g * t * t).toFixed(2)} m`, 10, 60);
+      
+      // Incrementar tiempo
+      t += dt;
+      
+      // Continuar animación si no se ha llegado al suelo
+      if (t <= tMax && y <= height - 50) {
+        animationProyectilRef.current = requestAnimationFrame(animar);
+      } else {
+        // Terminar la animación mostrando el resultado final
+        ctx.font = '14px Arial';
+        ctx.fillStyle = 'blue';
+        ctx.fillText(`Alcance: ${resultado.alcance.toFixed(2)} m`, width - 200, 30);
+        ctx.fillText(`Altura máxima: ${resultado.alturaMaxima.toFixed(2)} m`, width - 200, 50);
+        ctx.fillText(`Tiempo de vuelo: ${resultado.tiempoVuelo.toFixed(2)} s`, width - 200, 70);
+      }
+    };
+    
+    animar();
+  };
+
+  // Inicializar visualización cuando cambia el tipo de problema
+  useEffect(() => {
+    if (tipoProblema === 'proyectil') {
+      dibujarProyectil();
+    }
+  }, [tipoProblema, parametros]);
+
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h6" gutterBottom>
@@ -712,59 +877,124 @@ const OptimizacionFisica = () => {
         
         {tipoProblema === 'proyectil' && (
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Velocidad inicial (m/s)"
-                name="velocidadInicial"
-                value={parametros.velocidadInicial}
-                onChange={handleChangeParametro}
-                margin="normal"
-                variant="outlined"
-                type="number"
-                inputProps={{ step: 0.5 }}
-              />
+            <Grid item xs={12} md={6}>
+              <Box sx={{ height: 400, width: '100%', position: 'relative' }}>
+                <canvas ref={canvasProyectilRef} width={500} height={400} style={{ border: '1px solid #ddd' }} />
+              </Box>
+              {resultado && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                  <Button 
+                    variant="contained" 
+                    color="primary" 
+                    onClick={animarProyectil}
+                    sx={{ mr: 2 }}
+                  >
+                    Animar Trayectoria
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    color="error" 
+                    onClick={() => {
+                      if (animationProyectilRef.current) {
+                        cancelAnimationFrame(animationProyectilRef.current);
+                        animationProyectilRef.current = null;
+                      }
+                      dibujarProyectil();
+                    }}
+                  >
+                    Detener
+                  </Button>
+                </Box>
+              )}
             </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Ángulo (grados)"
-                name="angulo"
-                value={parametros.angulo}
-                onChange={handleChangeParametro}
-                margin="normal"
-                variant="outlined"
-                type="number"
-                inputProps={{ step: 1, min: 0, max: 90 }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Altura inicial (m)"
-                name="altura"
-                value={parametros.altura}
-                onChange={handleChangeParametro}
-                margin="normal"
-                variant="outlined"
-                type="number"
-                inputProps={{ step: 0.1 }}
-              />
+            <Grid item xs={12} md={6}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label="Velocidad inicial (m/s)"
+                    name="velocidadInicial"
+                    value={parametros.velocidadInicial}
+                    onChange={handleChangeParametro}
+                    margin="normal"
+                    variant="outlined"
+                    type="number"
+                    inputProps={{ step: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label="Ángulo (grados)"
+                    name="angulo"
+                    value={parametros.angulo}
+                    onChange={handleChangeParametro}
+                    margin="normal"
+                    variant="outlined"
+                    type="number"
+                    inputProps={{ step: 1, min: 0, max: 90 }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label="Altura inicial (m)"
+                    name="altura"
+                    value={parametros.altura}
+                    onChange={handleChangeParametro}
+                    margin="normal"
+                    variant="outlined"
+                    type="number"
+                    inputProps={{ step: 0.1 }}
+                  />
+                </Grid>
+              </Grid>
+              
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle1">Conceptos teóricos:</Typography>
+                <Typography variant="body2" paragraph>
+                  El movimiento de un proyectil está determinado por las ecuaciones:
+                </Typography>
+                <BlockMath math={`x(t) = x_0 + v_0 \\cos(\\theta) \\cdot t`} />
+                <BlockMath math={`y(t) = y_0 + v_0 \\sin(\\theta) \\cdot t - \\frac{1}{2}gt^2`} />
+                <Typography variant="body2" paragraph>
+                  Donde:
+                </Typography>
+                <Typography component="div" sx={{ pl: 2 }}>
+                  <ul>
+                    <li><InlineMath math={`v_0`} />: velocidad inicial</li>
+                    <li><InlineMath math={`\\theta`} />: ángulo de lanzamiento</li>
+                    <li><InlineMath math={`g`} />: aceleración de la gravedad (9.8 m/s²)</li>
+                    <li><InlineMath math={`x_0, y_0`} />: posición inicial</li>
+                  </ul>
+                </Typography>
+              </Box>
+              
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={calcularOptimizacion}
+                sx={{ mt: 2 }}
+              >
+                Calcular
+              </Button>
             </Grid>
           </Grid>
         )}
         
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={calcularOptimizacion}
-          sx={{ mt: 2 }}
-        >
-          Calcular
-        </Button>
+        {tipoProblema !== 'proyectil' && (
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={calcularOptimizacion}
+            sx={{ mt: 2 }}
+          >
+            Calcular
+          </Button>
+        )}
       </Paper>
       
-      {resultado && (
+      {resultado && tipoProblema !== 'proyectil' && (
         <Paper elevation={3} sx={{ p: 2 }}>
           <Typography variant="h6" gutterBottom>
             Resultados
@@ -835,9 +1065,17 @@ const OptimizacionFisica = () => {
               </Typography>
             </Box>
           )}
+        </Paper>
+      )}
+      
+      {resultado && tipoProblema === 'proyectil' && (
+        <Paper elevation={3} sx={{ p: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Resultados del Movimiento Proyectil
+          </Typography>
           
-          {tipoProblema === 'proyectil' && (
-            <Box>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={5}>
               <Typography variant="subtitle1">Parámetros iniciales:</Typography>
               <Typography>Velocidad inicial: <InlineMath math={`v_0 = ${resultado.parametros.v0}`} /> m/s</Typography>
               <Typography>Ángulo de lanzamiento: <InlineMath math={`\\theta = ${resultado.parametros.angulo}`} />°</Typography>
@@ -857,8 +1095,10 @@ const OptimizacionFisica = () => {
               <Typography>
                 Alcance máximo posible: <InlineMath math={`R_{max} = ${resultado.alcanceMaximo.toFixed(2)}`} /> m
               </Typography>
-              
-              <Typography variant="subtitle1" sx={{ mt: 2 }}>Explicación:</Typography>
+            </Grid>
+            
+            <Grid item xs={12} md={7}>
+              <Typography variant="subtitle1">Explicación:</Typography>
               <Typography>
                 {resultado.explicacion.split('\n\n').map((parrafo, index) => (
                   <React.Fragment key={index}>
@@ -867,8 +1107,8 @@ const OptimizacionFisica = () => {
                   </React.Fragment>
                 ))}
               </Typography>
-            </Box>
-          )}
+            </Grid>
+          </Grid>
         </Paper>
       )}
     </Box>

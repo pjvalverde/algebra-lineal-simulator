@@ -13,15 +13,16 @@
   "dependencies": {
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^7.2.0",
     "@mui/material": "^5.15.10",
     "@react-three/drei": "^9.99.7",
     "@react-three/fiber": "^8.15.19",
     "katex": "^0.16.21",
+    "mathjs": "^12.4.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-katex": "^3.0.1",
     "react-router-dom": "^6.22.1",
-    "mathjs": "^12.4.2",
     "recharts": "^2.15.1",
     "three": "^0.173.0"
   },

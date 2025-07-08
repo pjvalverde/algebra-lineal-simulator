@@ -12,35 +12,64 @@ export function doubleIntegralRectangular(
   yLowerExpr,
   yUpperExpr,
   stepsX = 100,
-  stepsY = 100
+  stepsY = 100,
+  outerVar = 'auto'
 ) {
   const integrand = compile(integrandExpr);
-  const xLowerCompiled = compile(xLowerExpr);
-  const xUpperCompiled = compile(xUpperExpr);
-  const yLowerCompiled = compile(yLowerExpr);
-  const yUpperCompiled = compile(yUpperExpr);
-
-  const xLower = xLowerCompiled.evaluate();
-  const xUpper = xUpperCompiled.evaluate();
-
-  const dx = (xUpper - xLower) / stepsX;
-  let sum = 0;
-
-  for (let i = 0; i < stepsX; i++) {
-    const xi = xLower + (i + 0.5) * dx; // punto medio
-
-    const yLower = yLowerCompiled.evaluate({ x: xi });
-    const yUpper = yUpperCompiled.evaluate({ x: xi });
-    const dy = (yUpper - yLower) / stepsY;
-
-    for (let j = 0; j < stepsY; j++) {
-      const yj = yLower + (j + 0.5) * dy; // punto medio
-      const f = integrand.evaluate({ x: xi, y: yj });
-      sum += f * dx * dy;
-    }
+  // Decide outer variable if auto
+  if (outerVar === 'auto') {
+    const dependsOnY = /\by\b/.test(xLowerExpr) || /\by\b/.test(xUpperExpr);
+    outerVar = dependsOnY ? 'y' : 'x';
   }
 
-  return sum;
+  if (outerVar === 'x') {
+    const xLowerCompiled = compile(xLowerExpr);
+    const xUpperCompiled = compile(xUpperExpr);
+    const yLowerCompiled = compile(yLowerExpr);
+    const yUpperCompiled = compile(yUpperExpr);
+
+    const xLower = xLowerCompiled.evaluate();
+    const xUpper = xUpperCompiled.evaluate();
+    const dx = (xUpper - xLower) / stepsX;
+    let sum = 0;
+
+    for (let i = 0; i < stepsX; i++) {
+      const x = xLower + (i + 0.5) * dx;
+      const yLow = yLowerCompiled.evaluate({ x });
+      const yUp = yUpperCompiled.evaluate({ x });
+      const dy = (yUp - yLow) / stepsY;
+      for (let j = 0; j < stepsY; j++) {
+        const y = yLow + (j + 0.5) * dy;
+        const f = integrand.evaluate({ x, y });
+        sum += f * dx * dy;
+      }
+    }
+    return sum;
+  } else {
+    // outerVar === 'y'
+    const yLowerCompiled = compile(yLowerExpr);
+    const yUpperCompiled = compile(yUpperExpr);
+    const xLowerCompiled = compile(xLowerExpr);
+    const xUpperCompiled = compile(xUpperExpr);
+
+    const yLower = yLowerCompiled.evaluate();
+    const yUpper = yUpperCompiled.evaluate();
+    const dy = (yUpper - yLower) / stepsY;
+    let sum = 0;
+
+    for (let j = 0; j < stepsY; j++) {
+      const y = yLower + (j + 0.5) * dy;
+      const xLow = xLowerCompiled.evaluate({ y });
+      const xUp = xUpperCompiled.evaluate({ y });
+      const dx = (xUp - xLow) / stepsX;
+      for (let i = 0; i < stepsX; i++) {
+        const x = xLow + (i + 0.5) * dx;
+        const f = integrand.evaluate({ x, y });
+        sum += f * dx * dy;
+      }
+    }
+    return sum;
+  }
 }
 
 /**
@@ -84,6 +113,14 @@ export function doubleIntegralPolar(
   }
 
   return sum;
+}
+
+export function convertIntegrandRectToPolar(expr) {
+  // Reemplaza x->(r*cos(theta)) y y->(r*sin(theta)) de manera sencilla.
+  // No es un parser completo, pero funciona para expresiones algebraicas simples.
+  return expr
+    .replace(/(?<![a-zA-Z0-9_])x(?![a-zA-Z0-9_])/g, '(r*cos(theta))')
+    .replace(/(?<![a-zA-Z0-9_])y(?![a-zA-Z0-9_])/g, '(r*sin(theta))');
 }
 
 // --- Funciones aún no implementadas (placeholders) ---

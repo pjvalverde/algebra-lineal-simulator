@@ -16,6 +16,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemButton,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
@@ -352,18 +353,13 @@ function IntegralesMultiples() {
           <AccordionDetails>
             <List dense>
               {EJERCICIOS.map((ex) => (
-                <ListItem
-                  key={ex.id}
-                  secondaryAction={
-                    <Button size="small" onClick={() => loadExercise(ex.data)}>
-                      Cargar
-                    </Button>
-                  }
-                >
-                  <ListItemText
-                    primary={`${ex.id}. ${ex.titulo}`}
-                    secondary={ex.descripcion}
-                  />
+                <ListItem key={ex.id} disablePadding>
+                  <ListItemButton onClick={() => loadExercise(ex.data)}>
+                    <ListItemText
+                      primary={`${ex.id}. ${ex.titulo}`}
+                      secondary={ex.descripcion}
+                    />
+                  </ListItemButton>
                 </ListItem>
               ))}
             </List>

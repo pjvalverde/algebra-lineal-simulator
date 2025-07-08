@@ -6,6 +6,7 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import EspacioTridimensional from './components/calculoMultivariante/EspacioTridimensional';
 // Importar el nuevo componente para Cálculo en una dimensión
 import CalculoUnaDimension from './components/calculoMultivariante/CalculoUnaDimension';
+import IntegralesMultiples from './components/calculoMultivariante/IntegralesMultiples';
 
 // Componentes temporales para cada sección
 function FuncionesVectoriales() {
@@ -27,18 +28,6 @@ function DerivadasParciales() {
       <Typography paragraph>
         Aquí se visualizarán derivadas parciales, gradientes, y aplicaciones
         como planos tangentes y aproximaciones lineales.
-      </Typography>
-    </Box>
-  );
-}
-
-function IntegralesMultiples() {
-  return (
-    <Box>
-      <Typography variant="h5" gutterBottom>Integrales Múltiples</Typography>
-      <Typography paragraph>
-        En esta sección se representarán integrales dobles y triples,
-        cambios de coordenadas y aplicaciones prácticas.
       </Typography>
     </Box>
   );

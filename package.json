@@ -21,6 +21,7 @@
     "react-dom": "^18.2.0",
     "react-katex": "^3.0.1",
     "react-router-dom": "^6.22.1",
+    "mathjs": "^12.4.2",
     "recharts": "^2.15.1",
     "three": "^0.173.0"
   },

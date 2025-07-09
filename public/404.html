@@ -2,33 +2,15 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Simulador de Matemáticas Avanzadas</title>
+  <title>Simulador de Matemáticas Avanzadas - Página no encontrada</title>
   <script type="text/javascript">
-    // GitHub Pages SPA redirect hack for subdirectories
-    // Based on https://github.com/rafgraph/spa-github-pages
-    (function(l) {
-      if (l.search[1] !== '/') {
-        var path = l.pathname.split('/').slice(1);
-        if (path[0] === 'algebra-lineal-simulator') {
-          // Remove the repository name and encode the remaining path
-          var pathSegments = path.slice(1);
-          if (pathSegments.length > 0) {
-            var encoded = '/?/' + pathSegments.join('/').replace(/&/g, '~and~') +
-              (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-              l.hash;
-            l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/algebra-lineal-simulator' + encoded);
-          } else {
-            // If no path segments, redirect to home
-            l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/algebra-lineal-simulator/');
-          }
-        }
-      }
-    }(window.location));
+    // Simple redirect to home page for HashRouter
+    window.location.replace('/algebra-lineal-simulator/');
   </script>
 </head>
 <body>
   <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-    <h2>Redirigiendo...</h2>
+    <h2>Redirigiendo al inicio...</h2>
     <p>Si no eres redirigido automáticamente, <a href="/algebra-lineal-simulator/">haz clic aquí</a>.</p>
   </div>
 </body>
